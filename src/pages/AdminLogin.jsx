@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE = "http://localhost:4000";
+const API_BASE = "https://redstone-hub-api.onrender.com";
 
 export default function AdminLogin() {
   const [username, setUsername] = useState("");

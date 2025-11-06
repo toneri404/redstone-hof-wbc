@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import HofManager from "../components/admin/HofManager.jsx";
 import WbcManager from "../components/admin/WbcManager.jsx";
 
-const API_BASE = "http://localhost:4000";
+const API_BASE = "https://redstone-hub-api.onrender.com";
 
 export default function AdminDashboard() {
   const [admin, setAdmin] = useState(null);

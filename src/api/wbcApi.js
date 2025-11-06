@@ -1,4 +1,4 @@
-const API_ROOT = "http://localhost:4000";
+const API_ROOT = "https://redstone-hub-api.onrender.com";
 const WBC_BASE = `${API_ROOT}/api/wbc`;
 
 export async function fetchWbcEntries(filters = {}) {

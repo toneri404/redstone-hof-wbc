@@ -145,7 +145,7 @@ export default function WbcMonthOverlay({ open, onClose }) {
     setLoading(true);
     setLoadError(null);
 
-    fetch("http://localhost:4000/api/wbc")
+    fetch("https://redstone-hub-api.onrender.com/api/wbc")
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
