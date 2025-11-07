@@ -129,10 +129,30 @@ function ProfileCard({ entry, wins, onViewProfile, showFirstBadge }) {
   );
 }
 
+const MONTH_ORDER = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+
 function parseMonthString(label) {
-  if (!label) return 0;
-  const d = new Date(label.replace(",", " 1,"));
-  return d.getTime() || 0;
+  if (!label) return -1;
+
+  // handle "October", "October, 2025", "October 2025" etc.
+  const monthPart = label.split(",")[0].trim().split(" ")[0];
+  const idx = MONTH_ORDER.indexOf(monthPart);
+
+  return idx === -1 ? -1 : idx;
 }
 
 /*main page*/
