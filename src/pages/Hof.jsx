@@ -74,7 +74,7 @@ function ProfileCard({ entry, wins, onViewProfile, showFirstBadge }) {
         <img
           src={entry.avatar || "/favicon.ico"}
           alt={entry.name}
-          className="h-11 w-11 rounded-xl object-cover ring-1 ring-white/20"
+          className="h-11 w-11 rounded-full object-cover ring-1 ring-white/20"
         />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
