@@ -403,7 +403,8 @@ export default function Hof() {
 
         {loading && (
           <p className="mt-6 text-sm text-zinc-400">
-            Loading Hall of Fame winners…
+            Loading Hall of Fame winners…(waking up the server, this can
+            take a few seconds on first load)
           </p>
         )}
         {error && (
