@@ -53,6 +53,7 @@ export default function AdminDashboard() {
     } catch (e) {
       console.error(e);
     } finally {
+      setAdmin(null);   
       navigate("/admin/login");
     }
   };
