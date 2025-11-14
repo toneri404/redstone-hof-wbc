@@ -14,12 +14,13 @@ export default function AdminLogin() {
 
   const navigate = useNavigate();
 
- 
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
+        const token = localStorage.getItem("admin_token");
         const res = await fetch(`${API_BASE}/api/auth/me`, {
           credentials: "include",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (res.ok) {
           navigate("/admin", { replace: true });
@@ -50,10 +51,14 @@ export default function AdminLogin() {
         body: JSON.stringify({ username, password, rememberMe }),
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         setError(data.message || "Login failed");
       } else {
+        if (data.token) {
+          localStorage.setItem("admin_token", data.token);
+        }
         navigate("/admin");
       }
     } catch (err) {
@@ -105,7 +110,6 @@ export default function AdminLogin() {
           />
         </div>
 
-        {/*Remember me*/}
         <label className="flex items-center gap-2 text-xs text-zinc-300">
           <input
             type="checkbox"
