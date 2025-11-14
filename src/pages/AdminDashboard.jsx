@@ -11,16 +11,16 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        const token = localStorage.getItem("admin_token");
         const res = await fetch(`${API_BASE}/api/auth/me`, {
           credentials: "include",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
 
         if (res.status === 401) {
-    
           navigate("/admin/login", { replace: true });
           return;
         }
@@ -46,15 +46,18 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     try {
+      const token = localStorage.getItem("admin_token");
       await fetch(`${API_BASE}/api/auth/logout`, {
         method: "POST",
         credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
     } catch (e) {
       console.error(e);
     } finally {
-      setAdmin(null);   
-      navigate("/admin/login");
+      localStorage.removeItem("admin_token");
+      setAdmin(null);
+      navigate("/admin/login", { replace: true });
     }
   };
 
@@ -85,11 +88,9 @@ export default function AdminDashboard() {
     );
   }
 
-
   return (
     <div className="min-h-screen bg-zinc-950 text-white px-4 py-6">
       <div className="max-w-6xl mx-auto space-y-8">
-
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-4">
           <div>
             <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
@@ -112,15 +113,14 @@ export default function AdminDashboard() {
         </header>
 
         <main className="space-y-8">
-         <section className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 space-y-3">
+          <section className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 space-y-3">
             <HofManager admin={admin} />
-         </section>
+          </section>
 
           <section className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 space-y-3">
-           <WbcManager admin={admin} />
+            <WbcManager admin={admin} />
           </section>
         </main>
-
       </div>
     </div>
   );
