@@ -1,4 +1,4 @@
-const API_ROOT = "https://redstone-hub-api.onrender.com";
+const API_ROOT = "https://backend.minershub.online";
 const HOF_BASE = `${API_ROOT}/api/hof`;
 
 export async function fetchHofEntries(filters = {}) {

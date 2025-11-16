@@ -161,7 +161,7 @@ export default function HofMonthOverlay({ open, onClose }) {
     async function load() {
       try {
         setError(null);
-        const res = await fetch("https://redstone-hub-api.onrender.com/api/hof");
+        const res = await fetch("https://backend.minershub.online/api/hof");
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 

@@ -78,7 +78,7 @@ export default function Wbc() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch("https://redstone-hub-api.onrender.com/api/wbc");
+        const res = await fetch("https://backend.minershub.online/api/wbc");
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
