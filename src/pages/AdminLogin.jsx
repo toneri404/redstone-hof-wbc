@@ -59,7 +59,7 @@ export default function AdminLogin() {
         if (data.token) {
           localStorage.setItem("admin_token", data.token);
         }
-        navigate("/admin");
+        navigate("/redstoney-room");
       }
     } catch (err) {
       console.error(err);
