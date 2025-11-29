@@ -24,8 +24,8 @@ export default function App() {
             <Route path="/wbc/select" element={<WbcMonthSelect />} />
             <Route path="/wbc" element={<WBC />} />
             <Route path="*" element={<div className="p-6">Not Found</div>} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/redstoney-room/login" element={<AdminLogin />} />
+            <Route path="/redstoney-room" element={<AdminDashboard />} />
           </Routes>
         </main>
 
