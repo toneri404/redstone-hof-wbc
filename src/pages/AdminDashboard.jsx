@@ -21,7 +21,7 @@ export default function AdminDashboard() {
         });
 
         if (res.status === 401) {
-          navigate("/admin/login", { replace: true });
+          navigate("/redstoney-room/login", { replace: true });
           return;
         }
 
@@ -57,7 +57,7 @@ export default function AdminDashboard() {
     } finally {
       localStorage.removeItem("admin_token");
       setAdmin(null);
-      navigate("/admin/login", { replace: true });
+      navigate("/redstoney-room/login", { replace: true });
     }
   };
 
@@ -78,7 +78,7 @@ export default function AdminDashboard() {
           </h1>
           <p className="text-sm text-red-200">{error}</p>
           <button
-            onClick={() => navigate("/admin/login")}
+            onClick={() => navigate("/redstoney-room/login")}
             className="rs-btn mt-2"
           >
             Go to login
