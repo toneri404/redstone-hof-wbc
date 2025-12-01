@@ -256,18 +256,19 @@ export default function WbcManager() {
         onSubmit={handleSubmit}
         className="rounded-2xl bg-[#111] border border-red-500/30 p-4 space-y-4"
       >
-        {/* Row 1 */}
+        {/* Row 1: Discord, Month, Year */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-medium text-zinc-400 mb-1">
-              Winner name
+              Discord username (without @)
             </label>
             <input
               type="text"
               className="w-full bg-black/70 border border-neutral-700 rounded px-3 py-2 text-sm text-white focus:border-red-500 outline-none"
-              placeholder="Display name"
-              value={formData.name}
-              onChange={(e) => handleChange("name", e.target.value)}
+              placeholder="toneri404"
+              value={formData.discord}
+              onChange={(e) => handleChange("discord", e.target.value)}
+              onBlur={handleDiscordBlur}
             />
           </div>
 
@@ -302,48 +303,18 @@ export default function WbcManager() {
           </div>
         </div>
 
-        {/* Row 2 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">
-              Date range (e.g. Oct 1 – Oct 7)
-            </label>
-            <input
-              type="text"
-              className="w-full bg-black/70 border border-neutral-700 rounded px-3 py-2 text-sm text-white focus:border-red-500 outline-none"
-              placeholder="Oct 1 – Oct 7"
-              value={formData.date_range}
-              onChange={(e) => handleChange("date_range", e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1">
-              Content link (https://)
-            </label>
-            <input
-              type="text"
-              className="w-full bg-black/70 border border-neutral-700 rounded px-3 py-2 text-sm text-white focus:border-red-500 outline-none"
-              placeholder="https://x.com/..."
-              value={formData.link}
-              onChange={(e) => handleChange("link", e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Row 3 */}
+        {/* Row 2: Winner, X handle, Avatar */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-medium text-zinc-400 mb-1">
-              Discord username (without @)
+              Winner name
             </label>
             <input
               type="text"
               className="w-full bg-black/70 border border-neutral-700 rounded px-3 py-2 text-sm text-white focus:border-red-500 outline-none"
-              placeholder="toneri404"
-              value={formData.discord}
-              onChange={(e) => handleChange("discord", e.target.value)}
-              onBlur={handleDiscordBlur}
+              placeholder="Display name"
+              value={formData.name}
+              onChange={(e) => handleChange("name", e.target.value)}
             />
           </div>
 
@@ -370,6 +341,35 @@ export default function WbcManager() {
               placeholder="https://pbs.twimg.com/..."
               value={formData.avatar}
               onChange={(e) => handleChange("avatar", e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Row 3: Date range and Content link */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">
+              Date range (e.g. Oct 1 – Oct 7)
+            </label>
+            <input
+              type="text"
+              className="w-full bg-black/70 border border-neutral-700 rounded px-3 py-2 text-sm text-white focus:border-red-500 outline-none"
+              placeholder="Oct 1 – Oct 7"
+              value={formData.date_range}
+              onChange={(e) => handleChange("date_range", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">
+              Content link (https://)
+            </label>
+            <input
+              type="text"
+              className="w-full bg-black/70 border border-neutral-700 rounded px-3 py-2 text-sm text-white focus:border-red-500 outline-none"
+              placeholder="https://x.com/..."
+              value={formData.link}
+              onChange={(e) => handleChange("link", e.target.value)}
             />
           </div>
         </div>
