@@ -134,7 +134,7 @@ export default function HofManager() {
     }
 
     setCategory(next);
-    showToast(`Category switched to "${next}" ✅`);
+    showToast(`Category switched to "${next}" `);
   };
 
   const handleFilterChange = (field, value) => {
