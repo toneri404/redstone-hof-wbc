@@ -19,6 +19,15 @@ const MONTH_ORDER = [
 const personKeyOf = (entry) =>
   (entry.personId || entry.name || "").trim().toLowerCase();
 
+function parseMonthString(label) {
+  if (!label) return -1;
+
+  // Supports: "October", "October, 2025", "October 2025"
+  const monthPart = label.split(",")[0].trim().split(" ")[0];
+  const idx = MONTH_ORDER.indexOf(monthPart);
+
+  return idx === -1 ? -1 : idx;
+}
 
 function DiscordIcon() {
   return (
@@ -36,41 +45,45 @@ function XIcon() {
   );
 }
 
-
-function useEntriesByMonth(entries) {
+function useEntriesByMonth(entries, selectedYear) {
   return useMemo(() => {
     const map = new Map();
+
     for (const e of entries) {
       if (!e.month) continue;
+
+      // Year filter here to prevent month collisions across years
+      if (selectedYear && e.year !== selectedYear) continue;
+
       if (!map.has(e.month)) map.set(e.month, []);
       map.get(e.month).push(e);
     }
+
+    // Sort weeks inside each month
     for (const [, arr] of map.entries()) {
       arr.sort((a, b) => (a.weekLabel || "").localeCompare(b.weekLabel || ""));
     }
-    return map;
-  }, [entries]);
-}
 
-function monthIndex(label) {
-  const idx = MONTH_ORDER.indexOf(label);
-  return idx === -1 ? -1 : idx;
+    return map;
+  }, [entries, selectedYear]);
 }
 
 export default function Wbc() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const entriesByMonth = useEntriesByMonth(entries);
 
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [activeEntry, setActiveEntry] = useState(null);
   const [showWeekDialog, setShowWeekDialog] = useState(false);
 
-  const [searchParams] = useSearchParams();
+  // Parse year from URL
+  const yearParamRaw = searchParams.get("year");
+  const yearParam = yearParamRaw ? Number(yearParamRaw) : null;
 
-  //load from backend
+  // Load from backend
   useEffect(() => {
     let cancelled = false;
 
@@ -78,6 +91,7 @@ export default function Wbc() {
       try {
         setLoading(true);
         setError(null);
+
         const res = await fetch("https://backend.minershub.online/api/wbc");
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
@@ -90,6 +104,7 @@ export default function Wbc() {
           discord: row.discord || "",
           x: row.x_handle || row.x || "",
           month: row.month || "",
+          year: row.year ? Number(row.year) : null, // IMPORTANT
           weekLabel: row.week_label || "",
           dateRange: row.date_range || "",
           link: row.link || "",
@@ -109,27 +124,73 @@ export default function Wbc() {
     };
   }, []);
 
-  
+  // Collect years from data
+  const years = useMemo(() => {
+    const set = new Set();
+    for (const e of entries) {
+      if (e.year) set.add(e.year);
+    }
+    const arr = Array.from(set);
+    arr.sort((a, b) => b - a);
+    return arr;
+  }, [entries]);
+
+  // Default year in URL to newest (prevents conflicts like HoF)
+  useEffect(() => {
+    if (!entries.length) return;
+    if (yearParam) return;
+    if (!years.length) return;
+
+    const next = new URLSearchParams(searchParams);
+    next.set("year", String(years[0]));
+    // Do not force month/week here; just set year
+    setSearchParams(next, { replace: true });
+  }, [entries, years, yearParam, searchParams, setSearchParams]);
+
+  const selectedYear = yearParam || years[0] || null;
+
+  const entriesByMonth = useEntriesByMonth(entries, selectedYear);
+
+  // Months list filtered by year
+  const months = useMemo(() => {
+    const set = new Set();
+    for (const e of entries) {
+      if (!e.month) continue;
+      if (selectedYear && e.year !== selectedYear) continue;
+      set.add(e.month);
+    }
+    const arr = Array.from(set);
+    arr.sort((a, b) => parseMonthString(b) - parseMonthString(a));
+    return arr;
+  }, [entries, selectedYear]);
+
+  // If URL contains id/month/week, pick that entry (with year protection)
   useEffect(() => {
     if (!entries.length) return;
 
     const idParam = searchParams.get("id");
     const monthParam = searchParams.get("month");
-    const weekParam =
-      searchParams.get("week") || searchParams.get("range") || "";
+    const weekParam = searchParams.get("week") || searchParams.get("range") || "";
+    const urlYearRaw = searchParams.get("year");
+    const urlYear = urlYearRaw ? Number(urlYearRaw) : null;
 
     let match = null;
 
     if (idParam) {
-      match = entries.find((e) => String(e.id) === String(idParam));
+      match = entries.find((e) => {
+        if (String(e.id) !== String(idParam)) return false;
+        // If URL has year, require it
+        if (urlYear && e.year !== urlYear) return false;
+        return true;
+      });
     }
 
     if (!match && monthParam && weekParam) {
-      match = entries.find(
-        (e) =>
-          e.month === monthParam &&
-          (e.weekLabel === weekParam || e.dateRange === weekParam)
-      );
+      match = entries.find((e) => {
+        if (urlYear && e.year !== urlYear) return false;
+        if (e.month !== monthParam) return false;
+        return e.weekLabel === weekParam || e.dateRange === weekParam;
+      });
     }
 
     if (match) {
@@ -140,15 +201,24 @@ export default function Wbc() {
     }
   }, [entries, searchParams]);
 
-  const months = useMemo(() => {
-    const set = new Set();
-    for (const e of entries) {
-      if (e.month) set.add(e.month);
-    }
-    const arr = Array.from(set);
-    arr.sort((a, b) => monthIndex(b) - monthIndex(a));
-    return arr;
-  }, [entries]);
+  const setYear = (y) => {
+    const next = new URLSearchParams(searchParams);
+
+    if (y) next.set("year", String(y));
+    else next.delete("year");
+
+    // Prevent month/week collision when switching year
+    next.delete("month");
+    next.delete("week");
+    next.delete("range");
+    next.delete("id");
+
+    setSearchParams(next, { replace: true });
+
+    setActiveEntry(null);
+    setSelectedMonth(null);
+    setShowWeekDialog(false);
+  };
 
   const handleMonthClick = (month) => {
     setSelectedMonth(month);
@@ -159,19 +229,38 @@ export default function Wbc() {
     setActiveEntry(entry);
     setSelectedMonth(entry.month);
     setShowWeekDialog(false);
+
+    // Optional: keep selection in URL so sharing works
+    const next = new URLSearchParams(searchParams);
+    if (selectedYear) next.set("year", String(selectedYear));
+    next.set("month", entry.month);
+    next.set("week", entry.weekLabel || entry.dateRange || "");
+    next.delete("id");
+    setSearchParams(next, { replace: true });
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleChangeSelection = () => {
     setActiveEntry(null);
     setSelectedMonth(null);
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("month");
+    next.delete("week");
+    next.delete("range");
+    next.delete("id");
+    setSearchParams(next, { replace: true });
   };
 
   const totalWinsForActive = useMemo(() => {
     if (!activeEntry) return 0;
     const key = personKeyOf(activeEntry);
-    return entries.filter((e) => personKeyOf(e) === key).length;
-  }, [activeEntry, entries]);
+    return entries.filter((e) => {
+      if (selectedYear && e.year !== selectedYear) return false;
+      return personKeyOf(e) === key;
+    }).length;
+  }, [activeEntry, entries, selectedYear]);
 
   return (
     <div className="min-h-screen bg-[#0e0505] text-white">
@@ -184,30 +273,47 @@ export default function Wbc() {
         <h1 className="text-4xl md:text-5xl font-extrabold leading-tight">
           Weekly Best <span className="text-red-400">Content</span>
         </h1>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {years.length > 0 && (
+            <select
+              value={selectedYear || years[0]}
+              onChange={(e) => setYear(Number(e.target.value))}
+              className="rounded-lg px-4 py-2 text-sm font-semibold bg-zinc-900/90 border border-zinc-800 hover:border-red-500 transition-colors"
+            >
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
         {activeEntry ? (
           <div className="mt-2 text-zinc-300 text-sm md:text-base">
-            {activeEntry.month} • {activeEntry.weekLabel || "Week"}
+            {activeEntry.month} {activeEntry.year ? `(${activeEntry.year})` : ""} •{" "}
+            {activeEntry.weekLabel || "Week"}
           </div>
         ) : (
           <div className="mt-2 text-zinc-300 text-sm md:text-base">
-            Select a month, then pick a week to view the winner.
+            Select a year, then a month, then pick a week to view the winner.
           </div>
         )}
 
         {loading && (
           <p className="mt-4 text-sm text-zinc-400">
-            Loading Weekly Best Content…
+            Loading Weekly Best Content...
           </p>
         )}
-        {error && (
-          <p className="mt-4 text-sm text-red-400">Error: {error}</p>
-        )}
+        {error && <p className="mt-4 text-sm text-red-400">Error: {error}</p>}
 
-        {/*month grid*/}
+        {/* Month grid */}
         {!activeEntry && (
           <section className="mt-8">
             <h2 className="text-sm font-semibold text-zinc-200 mb-3">
-              Select Month • Weekly Best Content
+              Select Month • Weekly Best Content{" "}
+              {selectedYear ? `(${selectedYear})` : ""}
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -215,16 +321,16 @@ export default function Wbc() {
                 const monthEntries = entriesByMonth.get(month) || [];
                 return (
                   <button
-                    key={month}
+                    key={`${selectedYear || "all"}-${month}`}
                     type="button"
                     onClick={() => handleMonthClick(month)}
                     className="glass-tile-watery p-4 text-left"
                   >
                     <h3 className="text-lg font-semibold mb-2">{month}</h3>
+
                     {monthEntries.length === 0 ? (
                       <p className="text-xs text-zinc-400">
-                        No Weekly Best Content winners recorded for this month
-                        yet.
+                        No Weekly Best Content winners recorded for this month yet.
                       </p>
                     ) : (
                       <>
@@ -261,7 +367,7 @@ export default function Wbc() {
           </section>
         )}
 
-        {/* final WBC winner view */}
+        {/* Final WBC winner view */}
         {activeEntry && (
           <section className="mt-8 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -291,8 +397,7 @@ export default function Wbc() {
                     </div>
                     {totalWinsForActive > 0 && (
                       <span className="rounded-full bg-green-600/20 px-2 py-[2px] text-[11px] text-green-400">
-                        {totalWinsForActive} WBC win
-                        {totalWinsForActive > 1 ? "s" : ""}
+                        {totalWinsForActive} WBC win{totalWinsForActive > 1 ? "s" : ""}
                       </span>
                     )}
                   </div>
@@ -301,9 +406,7 @@ export default function Wbc() {
                     {activeEntry.discord && (
                       <span className="inline-flex items-center gap-1">
                         <DiscordIcon />
-                        <span className="truncate">
-                          @{activeEntry.discord}
-                        </span>
+                        <span className="truncate">@{activeEntry.discord}</span>
                       </span>
                     )}
                     {activeEntry.x && (
@@ -315,13 +418,14 @@ export default function Wbc() {
                   </div>
 
                   <div className="mt-2 text-xs text-zinc-300">
+                    <span className="text-zinc-400">Year:</span>{" "}
+                    {activeEntry.year || selectedYear || "All years"}{" "}
+                    <span className="text-zinc-500 mx-1">•</span>
                     <span className="text-zinc-400">Month:</span>{" "}
                     {activeEntry.month}{" "}
                     <span className="text-zinc-500 mx-1">•</span>
                     <span className="text-zinc-400">Week:</span>{" "}
-                    {activeEntry.weekLabel ||
-                      activeEntry.dateRange ||
-                      "Week"}
+                    {activeEntry.weekLabel || activeEntry.dateRange || "Week"}
                   </div>
                 </div>
               </div>
@@ -329,10 +433,9 @@ export default function Wbc() {
               <div className="mt-5 flex items-center justify-between gap-3 flex-wrap">
                 <p className="text-xs text-zinc-300">
                   This entry was selected as Weekly Best Content for{" "}
-                  {activeEntry.weekLabel ||
-                    activeEntry.dateRange ||
-                    "this week"}{" "}
-                  in {activeEntry.month}.
+                  {activeEntry.weekLabel || activeEntry.dateRange || "this week"} in{" "}
+                  {activeEntry.month}{" "}
+                  {activeEntry.year ? `(${activeEntry.year})` : selectedYear ? `(${selectedYear})` : ""}.
                 </p>
 
                 {activeEntry.link && (
@@ -351,24 +454,43 @@ export default function Wbc() {
         )}
       </div>
 
-      {/* week picker popup */}
+      {/* Week picker popup */}
       {selectedMonth && showWeekDialog && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/70"
             onClick={() => setShowWeekDialog(false)}
           />
+
           <div className="relative w-[min(95vw,650px)] rounded-2xl bg-zinc-950 border border-zinc-800 p-5">
             <div className="flex items-center justify-between gap-4 mb-4">
               <h2 className="text-lg font-semibold">
-                Select winner : {selectedMonth}
+                Select winner: {selectedMonth}{" "}
+                {selectedYear ? `(${selectedYear})` : ""}
               </h2>
-              <button
-                onClick={() => setShowWeekDialog(false)}
-                className="rounded-md px-3 py-1.5 text-sm bg-zinc-900 border border-zinc-700 hover:bg-zinc-800"
-              >
-                Close
-              </button>
+
+              <div className="flex items-center gap-2">
+                {years.length > 0 && (
+                  <select
+                    value={selectedYear || years[0]}
+                    onChange={(e) => setYear(Number(e.target.value))}
+                    className="rounded-md px-3 py-1.5 text-sm bg-zinc-900 border border-zinc-700 hover:bg-zinc-800"
+                  >
+                    {years.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                <button
+                  onClick={() => setShowWeekDialog(false)}
+                  className="rounded-md px-3 py-1.5 text-sm bg-zinc-900 border border-zinc-700 hover:bg-zinc-800"
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
