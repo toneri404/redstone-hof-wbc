@@ -1,7 +1,7 @@
+// src/components/ui/WbcMonthOverlay.jsx
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-
 
 const MONTH_ORDER = [
   "January",
@@ -23,23 +23,76 @@ function monthIndex(label) {
   return idx === -1 ? -1 : idx;
 }
 
+function safeYear(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
 
+function YearPicker({ years, value, onChange }) {
+  const idx = years.indexOf(value);
+
+  const prev = () => {
+    if (idx <= 0) return;
+    onChange(years[idx - 1]);
+  };
+
+  const next = () => {
+    if (idx === -1 || idx >= years.length - 1) return;
+    onChange(years[idx + 1]);
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={prev}
+        disabled={idx <= 0}
+        className="rounded-md px-2 py-1 text-sm bg-zinc-900 border border-zinc-700 disabled:opacity-40 hover:bg-zinc-800"
+        title="Previous year"
+      >
+        ‹
+      </button>
+
+      <select
+        value={value ?? ""}
+        onChange={(e) => onChange(safeYear(e.target.value))}
+        className="rounded-md px-3 py-1.5 text-sm bg-zinc-900 border border-zinc-700 hover:bg-zinc-800"
+      >
+        {years.map((y) => (
+          <option key={y} value={y}>
+            {y}
+          </option>
+        ))}
+      </select>
+
+      <button
+        type="button"
+        onClick={next}
+        disabled={idx === -1 || idx >= years.length - 1}
+        className="rounded-md px-2 py-1 text-sm bg-zinc-900 border border-zinc-700 disabled:opacity-40 hover:bg-zinc-800"
+        title="Next year"
+      >
+        ›
+      </button>
+    </div>
+  );
+}
 
 function mapRow(row) {
   return {
     id: row.id,
-    personId: row.person_id,
-    name: row.name,
-    avatar: row.avatar,
-    discord: row.discord,
-    x: row.x_handle,
-    month: row.month,
-    weekLabel: row.week_label,
-    dateRange: row.date_range,
-    link: row.link,
+    personId: row.person_id || null,
+    name: row.name || "",
+    avatar: row.avatar || "",
+    discord: row.discord || "",
+    x: row.x_handle || row.x || "",
+    month: row.month || "",
+    year: safeYear(row.year), // important
+    weekLabel: row.week_label || "",
+    dateRange: row.date_range || "",
+    link: row.link || "",
   };
 }
-
 
 function useWeeksByMonth(entries) {
   return useMemo(() => {
@@ -51,8 +104,7 @@ function useWeeksByMonth(entries) {
       map.get(e.month).push(e);
     }
 
-
-    for (const [month, arr] of map.entries()) {
+    for (const [, arr] of map.entries()) {
       arr.sort((a, b) => {
         const aKey = (a.weekLabel || a.dateRange || "").toString();
         const bKey = (b.weekLabel || b.dateRange || "").toString();
@@ -63,8 +115,6 @@ function useWeeksByMonth(entries) {
     return map;
   }, [entries]);
 }
-
-//month card
 
 function MonthTile({ month, weeks, onOpen }) {
   const preview = weeks.slice(0, 4);
@@ -127,26 +177,29 @@ function MonthTile({ month, weeks, onOpen }) {
   );
 }
 
-//main overlay
-
 export default function WbcMonthOverlay({ open, onClose }) {
   const navigate = useNavigate();
 
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
-  const [selectedMonth, setSelectedMonth] = useState(null);
 
+  const [selectedMonth, setSelectedMonth] = useState(null);
+  const [selectedYear, setSelectedYear] = useState(null);
 
   useEffect(() => {
     if (!open) return;
 
     let cancelled = false;
+
     setLoading(true);
     setLoadError(null);
 
     fetch("https://backend.minershub.online/api/wbc")
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         if (cancelled) return;
         const list = Array.isArray(data) ? data.map(mapRow) : [];
@@ -155,7 +208,7 @@ export default function WbcMonthOverlay({ open, onClose }) {
       .catch((err) => {
         if (!cancelled) {
           console.error("Failed to load WBC entries!", err);
-          setLoadError("Failed to load Weekly Best Content data!");
+          setLoadError(err.message || "Failed to load Weekly Best Content data!");
         }
       })
       .finally(() => {
@@ -167,26 +220,45 @@ export default function WbcMonthOverlay({ open, onClose }) {
     };
   }, [open]);
 
-  const weeksByMonth = useWeeksByMonth(entries);
+  const years = useMemo(() => {
+    const set = new Set();
+    for (const e of entries) {
+      if (e.year) set.add(e.year);
+    }
+    const arr = Array.from(set);
+    arr.sort((a, b) => b - a);
+    return arr;
+  }, [entries]);
 
- 
+  useEffect(() => {
+    if (!years.length) return;
+    if (selectedYear == null) {
+      setSelectedYear(years[0]); // newest year
+    } else if (!years.includes(selectedYear)) {
+      setSelectedYear(years[0]);
+    }
+  }, [years, selectedYear]);
+
+  const entriesForYear = useMemo(() => {
+    if (!selectedYear) return entries;
+    return entries.filter((e) => e.year === selectedYear);
+  }, [entries, selectedYear]);
+
+  const weeksByMonth = useWeeksByMonth(entriesForYear);
+
   const months = useMemo(() => {
     const arr = Array.from(weeksByMonth.keys());
     arr.sort((a, b) => monthIndex(b) - monthIndex(a));
     return arr;
   }, [weeksByMonth]);
 
-  const handleMonthOpen = (month) => {
-    setSelectedMonth(month);
-  };
-
-  const handleWeekClose = () => {
-    setSelectedMonth(null);
-  };
+  const handleMonthOpen = (month) => setSelectedMonth(month);
+  const handleWeekClose = () => setSelectedMonth(null);
 
   const handleWeekClick = (entry) => {
     const params = new URLSearchParams();
     if (entry.month) params.set("month", entry.month);
+    if (entry.year) params.set("year", String(entry.year));
     if (entry.weekLabel) params.set("week", entry.weekLabel);
     if (entry.dateRange) params.set("range", entry.dateRange);
     params.set("id", String(entry.id));
@@ -209,10 +281,8 @@ export default function WbcMonthOverlay({ open, onClose }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-         
           <div className="absolute inset-0 bg-black/70" onClick={onClose} />
 
-          {/*main panel*/}
           <motion.div
             initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -225,23 +295,35 @@ export default function WbcMonthOverlay({ open, onClose }) {
                 Select Month •{" "}
                 <span className="text-red-400">Weekly Best Content</span>
               </div>
-              <button
-                onClick={onClose}
-                className="rounded-md px-3 py-1.5 text-sm bg-zinc-900 border border-zinc-700 hover:bg-zinc-800"
-              >
-                Close
-              </button>
+
+              <div className="flex items-center gap-3">
+                {years.length > 0 && (
+                  <YearPicker
+                    years={years}
+                    value={selectedYear}
+                    onChange={(y) => {
+                      setSelectedYear(y);
+                      setSelectedMonth(null);
+                    }}
+                  />
+                )}
+                <button
+                  onClick={onClose}
+                  className="rounded-md px-3 py-1.5 text-sm bg-zinc-900 border border-zinc-700 hover:bg-zinc-800"
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
             {loading && (
-              <p className="text-xs text-zinc-400 mb-2">Loading winners…</p>
+              <p className="text-xs text-zinc-400 mb-2">Loading winners...</p>
             )}
             {loadError && (
               <p className="text-xs text-red-400 mb-2">{loadError}</p>
             )}
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 pt-2">
-
               <motion.button
                 type="button"
                 onClick={goAll}
@@ -258,9 +340,7 @@ export default function WbcMonthOverlay({ open, onClose }) {
               >
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-white/5 mix-blend-soft-light pointer-events-none" />
                 <div className="relative z-10">
-                  <div className="text-sm text-white/85">
-                    Weekly Best Content
-                  </div>
+                  <div className="text-sm text-white/85">Weekly Best Content</div>
                   <div className="mt-0.5 text-2xl font-bold text-white">
                     View all winners
                   </div>
@@ -279,8 +359,13 @@ export default function WbcMonthOverlay({ open, onClose }) {
                 />
               ))}
             </div>
-          </motion.div>
 
+            {years.length > 0 && !loading && months.length === 0 && (
+              <p className="mt-4 text-sm text-zinc-400">
+                No WBC data found for {selectedYear}.
+              </p>
+            )}
+          </motion.div>
 
           <AnimatePresence>
             {selectedMonth && (
@@ -303,7 +388,8 @@ export default function WbcMonthOverlay({ open, onClose }) {
                 >
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold">
-                      Select winner : {selectedMonth}
+                      Select winner : {selectedMonth}{" "}
+                      {selectedYear ? `(${selectedYear})` : ""}
                     </h2>
                     <button
                       onClick={handleWeekClose}

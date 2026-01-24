@@ -11,38 +11,75 @@ const SECTIONS = [
 ];
 
 const MONTH_ORDER = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
 ];
 
-
-function parseMonthString(label) {
+function monthIndex(label) {
   if (!label) return -1;
-
   const monthPart = label.split(",")[0].trim().split(" ")[0];
-  const idx = MONTH_ORDER.indexOf(monthPart);
-
-  return idx === -1 ? -1 : idx;
+  return MONTH_ORDER.indexOf(monthPart);
 }
 
+function safeYear(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
 
-/*month tile for the popup.
-*/
+function YearPicker({ years, value, onChange }) {
+  const idx = years.indexOf(value);
+
+  const prev = () => {
+    if (idx <= 0) return;
+    onChange(years[idx - 1]);
+  };
+
+  const next = () => {
+    if (idx === -1 || idx >= years.length - 1) return;
+    onChange(years[idx + 1]);
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={prev}
+        disabled={idx <= 0}
+        className="rounded-md px-2 py-1 text-sm bg-zinc-900 border border-zinc-700 disabled:opacity-40 hover:bg-zinc-800"
+        title="Previous year"
+      >
+        ‹
+      </button>
+
+      <select
+        value={value ?? ""}
+        onChange={(e) => onChange(safeYear(e.target.value))}
+        className="rounded-md px-3 py-1.5 text-sm bg-zinc-900 border border-zinc-700 hover:bg-zinc-800"
+      >
+        {years.map((y) => (
+          <option key={y} value={y}>
+            {y}
+          </option>
+        ))}
+      </select>
+
+      <button
+        type="button"
+        onClick={next}
+        disabled={idx === -1 || idx >= years.length - 1}
+        className="rounded-md px-2 py-1 text-sm bg-zinc-900 border border-zinc-700 disabled:opacity-40 hover:bg-zinc-800"
+        title="Next year"
+      >
+        ›
+      </button>
+    </div>
+  );
+}
+
+/* Month tile */
 const MonthTile = memo(function MonthTile({ month, entries, onOpen }) {
-
   const winners = useMemo(() => {
     const map = {};
-
     const monthEntries = entries.filter((e) => e.month === month);
 
     const sortByTimeOrId = (a, b) => {
@@ -56,27 +93,18 @@ const MonthTile = memo(function MonthTile({ month, entries, onOpen }) {
       );
       if (!candidates.length) continue;
 
-
       let chosen = candidates.find((e) => e.placement === 1);
+      if (!chosen) chosen = [...candidates].sort(sortByTimeOrId)[0];
 
-
-      if (!chosen) {
-        chosen = [...candidates].sort(sortByTimeOrId)[0];
-      }
-
-      if (chosen) {
-        map[sec.key] = chosen;
-      }
+      if (chosen) map[sec.key] = chosen;
     }
 
     return map;
   }, [entries, month]);
 
-
   const preview = useMemo(() => {
     const list = [];
     const seen = new Set();
-
     for (const w of Object.values(winners)) {
       if (!w) continue;
       const key = w.id ?? `${w.name}-${w.category}`;
@@ -85,7 +113,6 @@ const MonthTile = memo(function MonthTile({ month, entries, onOpen }) {
       list.push(w);
       if (list.length >= 4) break;
     }
-
     return list;
   }, [winners]);
 
@@ -107,7 +134,6 @@ const MonthTile = memo(function MonthTile({ month, entries, onOpen }) {
       <div className="relative z-10">
         <div className="text-sm text-white/85">Hall of Fame</div>
         <div className="mt-0.5 text-2xl font-bold text-white">{month}</div>
-
 
         <div className="mt-4">
           {preview.length === 0 ? (
@@ -152,7 +178,8 @@ export default function HofMonthOverlay({ open, onClose }) {
   const [entries, setEntries] = useState([]);
   const [error, setError] = useState(null);
 
- 
+  const [selectedYear, setSelectedYear] = useState(null);
+
   useEffect(() => {
     if (!open) return;
 
@@ -170,6 +197,7 @@ export default function HofMonthOverlay({ open, onClose }) {
           name: row.name || "",
           avatar: row.avatar || "",
           month: row.month || "",
+          year: safeYear(row.year), // مهم
           category: row.category || "",
           placement:
             row.placement === null || row.placement === undefined
@@ -190,16 +218,39 @@ export default function HofMonthOverlay({ open, onClose }) {
     };
   }, [open]);
 
-  
-  const months = useMemo(() => {
+  const years = useMemo(() => {
     const set = new Set();
     for (const e of entries) {
+      if (e.year) set.add(e.year);
+    }
+    const arr = Array.from(set);
+    arr.sort((a, b) => b - a);
+    return arr;
+  }, [entries]);
+
+  useEffect(() => {
+    if (!years.length) return;
+    if (selectedYear == null) {
+      setSelectedYear(years[0]); // newest year
+    } else if (!years.includes(selectedYear)) {
+      setSelectedYear(years[0]);
+    }
+  }, [years, selectedYear]);
+
+  const entriesForYear = useMemo(() => {
+    if (!selectedYear) return entries;
+    return entries.filter((e) => e.year === selectedYear);
+  }, [entries, selectedYear]);
+
+  const months = useMemo(() => {
+    const set = new Set();
+    for (const e of entriesForYear) {
       if (e.month) set.add(e.month);
     }
     const arr = Array.from(set);
-    arr.sort((a, b) => parseMonthString(b) - parseMonthString(a));
+    arr.sort((a, b) => monthIndex(b) - monthIndex(a));
     return arr;
-  }, [entries]);
+  }, [entriesForYear]);
 
   const goAll = () => {
     onClose?.();
@@ -208,7 +259,11 @@ export default function HofMonthOverlay({ open, onClose }) {
 
   const goMonth = (m) => {
     onClose?.();
-    navigate(`/hof?month=${encodeURIComponent(m)}`);
+    // keep year in URL so /hof shows the right year (optional but recommended)
+    const params = new URLSearchParams();
+    params.set("month", m);
+    if (selectedYear) params.set("year", String(selectedYear));
+    navigate(`/hof?${params.toString()}`);
   };
 
   return (
@@ -233,12 +288,22 @@ export default function HofMonthOverlay({ open, onClose }) {
               <div className="text-xl font-semibold">
                 Select Month • <span className="text-red-400">Hall of Fame</span>
               </div>
-              <button
-                onClick={onClose}
-                className="rounded-md px-3 py-1.5 text-sm bg-zinc-900 border border-zinc-700 hover:bg-zinc-800"
-              >
-                Close
-              </button>
+
+              <div className="flex items-center gap-3">
+                {years.length > 0 && (
+                  <YearPicker
+                    years={years}
+                    value={selectedYear}
+                    onChange={setSelectedYear}
+                  />
+                )}
+                <button
+                  onClick={onClose}
+                  className="rounded-md px-3 py-1.5 text-sm bg-zinc-900 border border-zinc-700 hover:bg-zinc-800"
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -248,7 +313,6 @@ export default function HofMonthOverlay({ open, onClose }) {
             )}
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 pt-2">
-              
               <motion.button
                 onClick={goAll}
                 initial={{ y: 20, opacity: 0 }}
@@ -275,14 +339,15 @@ export default function HofMonthOverlay({ open, onClose }) {
               </motion.button>
 
               {months.map((m) => (
-                <MonthTile
-                  key={m}
-                  month={m}
-                  entries={entries}
-                  onOpen={goMonth}
-                />
+                <MonthTile key={m} month={m} entries={entriesForYear} onOpen={goMonth} />
               ))}
             </div>
+
+            {years.length > 0 && months.length === 0 && (
+              <p className="mt-4 text-sm text-zinc-400">
+                No HoF data found for {selectedYear}.
+              </p>
+            )}
           </motion.div>
         </motion.div>
       )}
