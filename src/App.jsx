@@ -8,6 +8,8 @@ import ScrollToTop from "./components/ui/ScrollToTop";
 import Footer from "./components/Footer.jsx";
 import AdminLogin from "./pages/AdminLogin.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
+import WinnerProfileWbc from "./pages/WinnerProfileWbc";
+import WinnerProfile from "./pages/WinnerProfile";
 
 
 export default function App() {
@@ -23,6 +25,8 @@ export default function App() {
             <Route path="/hof" element={<HoF />} />
             <Route path="/wbc/select" element={<WbcMonthSelect />} />
             <Route path="/wbc" element={<WBC />} />
+            <Route path="/wbc/winner/:personKey" element={<WinnerProfileWbc />} />
+            <Route path="/winner/:key" element={<WinnerProfile />} />
             <Route path="*" element={<div className="p-6">Not Found</div>} />
             <Route path="/redstoney-room/login" element={<AdminLogin />} />
             <Route path="/redstoney-room" element={<AdminDashboard />} />
