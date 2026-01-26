@@ -1,5 +1,6 @@
+// Wbc.jsx
 import { useMemo, useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 
 const MONTH_ORDER = [
   "January",
@@ -19,13 +20,12 @@ const MONTH_ORDER = [
 const personKeyOf = (entry) =>
   (entry.personId || entry.name || "").trim().toLowerCase();
 
+const safeKey = (s) => encodeURIComponent((s || "").trim().toLowerCase());
+
 function parseMonthString(label) {
   if (!label) return -1;
-
-  // Supports: "October", "October, 2025", "October 2025"
   const monthPart = label.split(",")[0].trim().split(" ")[0];
   const idx = MONTH_ORDER.indexOf(monthPart);
-
   return idx === -1 ? -1 : idx;
 }
 
@@ -51,15 +51,12 @@ function useEntriesByMonth(entries, selectedYear) {
 
     for (const e of entries) {
       if (!e.month) continue;
-
-      // Year filter here to prevent month collisions across years
       if (selectedYear && e.year !== selectedYear) continue;
 
       if (!map.has(e.month)) map.set(e.month, []);
       map.get(e.month).push(e);
     }
 
-    // Sort weeks inside each month
     for (const [, arr] of map.entries()) {
       arr.sort((a, b) => (a.weekLabel || "").localeCompare(b.weekLabel || ""));
     }
@@ -79,11 +76,9 @@ export default function Wbc() {
   const [activeEntry, setActiveEntry] = useState(null);
   const [showWeekDialog, setShowWeekDialog] = useState(false);
 
-  // Parse year from URL
   const yearParamRaw = searchParams.get("year");
   const yearParam = yearParamRaw ? Number(yearParamRaw) : null;
 
-  // Load from backend
   useEffect(() => {
     let cancelled = false;
 
@@ -104,7 +99,7 @@ export default function Wbc() {
           discord: row.discord || "",
           x: row.x_handle || row.x || "",
           month: row.month || "",
-          year: row.year ? Number(row.year) : null, // IMPORTANT
+          year: row.year ? Number(row.year) : null,
           weekLabel: row.week_label || "",
           dateRange: row.date_range || "",
           link: row.link || "",
@@ -124,18 +119,14 @@ export default function Wbc() {
     };
   }, []);
 
-  // Collect years from data
   const years = useMemo(() => {
     const set = new Set();
-    for (const e of entries) {
-      if (e.year) set.add(e.year);
-    }
+    for (const e of entries) if (e.year) set.add(e.year);
     const arr = Array.from(set);
     arr.sort((a, b) => b - a);
     return arr;
   }, [entries]);
 
-  // Default year in URL to newest (prevents conflicts like HoF)
   useEffect(() => {
     if (!entries.length) return;
     if (yearParam) return;
@@ -143,7 +134,6 @@ export default function Wbc() {
 
     const next = new URLSearchParams(searchParams);
     next.set("year", String(years[0]));
-    // Do not force month/week here; just set year
     setSearchParams(next, { replace: true });
   }, [entries, years, yearParam, searchParams, setSearchParams]);
 
@@ -151,7 +141,6 @@ export default function Wbc() {
 
   const entriesByMonth = useEntriesByMonth(entries, selectedYear);
 
-  // Months list filtered by year
   const months = useMemo(() => {
     const set = new Set();
     for (const e of entries) {
@@ -164,7 +153,6 @@ export default function Wbc() {
     return arr;
   }, [entries, selectedYear]);
 
-  // If URL contains id/month/week, pick that entry (with year protection)
   useEffect(() => {
     if (!entries.length) return;
 
@@ -179,7 +167,6 @@ export default function Wbc() {
     if (idParam) {
       match = entries.find((e) => {
         if (String(e.id) !== String(idParam)) return false;
-        // If URL has year, require it
         if (urlYear && e.year !== urlYear) return false;
         return true;
       });
@@ -207,7 +194,6 @@ export default function Wbc() {
     if (y) next.set("year", String(y));
     else next.delete("year");
 
-    // Prevent month/week collision when switching year
     next.delete("month");
     next.delete("week");
     next.delete("range");
@@ -230,7 +216,6 @@ export default function Wbc() {
     setSelectedMonth(entry.month);
     setShowWeekDialog(false);
 
-    // Optional: keep selection in URL so sharing works
     const next = new URLSearchParams(searchParams);
     if (selectedYear) next.set("year", String(selectedYear));
     next.set("month", entry.month);
@@ -261,6 +246,8 @@ export default function Wbc() {
       return personKeyOf(e) === key;
     }).length;
   }, [activeEntry, entries, selectedYear]);
+
+  const activePersonKey = activeEntry ? personKeyOf(activeEntry) : "";
 
   return (
     <div className="min-h-screen bg-[#0e0505] text-white">
@@ -302,18 +289,14 @@ export default function Wbc() {
         )}
 
         {loading && (
-          <p className="mt-4 text-sm text-zinc-400">
-            Loading Weekly Best Content...
-          </p>
+          <p className="mt-4 text-sm text-zinc-400">Loading Weekly Best Content...</p>
         )}
         {error && <p className="mt-4 text-sm text-red-400">Error: {error}</p>}
 
-        {/* Month grid */}
         {!activeEntry && (
           <section className="mt-8">
             <h2 className="text-sm font-semibold text-zinc-200 mb-3">
-              Select Month • Weekly Best Content{" "}
-              {selectedYear ? `(${selectedYear})` : ""}
+              Select Month • Weekly Best Content {selectedYear ? `(${selectedYear})` : ""}
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -337,28 +320,33 @@ export default function Wbc() {
                         <p className="text-xs text-zinc-400 mb-2">
                           Winners in this month:
                         </p>
+
                         <div className="flex flex-wrap gap-2">
-                          {monthEntries.map((e) => (
-                            <div
-                              key={e.id}
-                              className="inline-flex items-center gap-2 rounded-full bg-black/40 px-2 py-1"
-                            >
-                              <img
-                                src={e.avatar || "/favicon.ico"}
-                                alt={e.name}
-                                className="h-6 w-6 rounded-full object-cover"
-                              />
-                              <span className="text-xs text-zinc-100">
-                                {e.name}
-                              </span>
-                            </div>
-                          ))}
+                          {monthEntries.map((e) => {
+                            const k = safeKey(personKeyOf(e));
+                            return (
+                              <Link
+                                key={e.id}
+                                to={`/winner/${k}`}
+                                className="inline-flex items-center gap-2 rounded-full bg-black/40 px-2 py-1 hover:bg-black/55 transition-colors"
+                                onClick={(ev) => ev.stopPropagation()}
+                                title="Open winner profile"
+                              >
+                                <img
+                                  src={e.avatar || "/favicon.ico"}
+                                  alt={e.name}
+                                  className="h-6 w-6 rounded-full object-cover"
+                                />
+                                <span className="text-xs text-zinc-100">{e.name}</span>
+                              </Link>
+                            );
+                          })}
                         </div>
                       </>
                     )}
 
                     <p className="mt-3 text-[11px] text-zinc-400">
-                      Tap to select week and view WBC winner.
+                      Tap the card to pick a week, or tap a name to open profile.
                     </p>
                   </button>
                 );
@@ -367,7 +355,6 @@ export default function Wbc() {
           </section>
         )}
 
-        {/* Final WBC winner view */}
         {activeEntry && (
           <section className="mt-8 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -421,12 +408,22 @@ export default function Wbc() {
                     <span className="text-zinc-400">Year:</span>{" "}
                     {activeEntry.year || selectedYear || "All years"}{" "}
                     <span className="text-zinc-500 mx-1">•</span>
-                    <span className="text-zinc-400">Month:</span>{" "}
-                    {activeEntry.month}{" "}
+                    <span className="text-zinc-400">Month:</span> {activeEntry.month}{" "}
                     <span className="text-zinc-500 mx-1">•</span>
                     <span className="text-zinc-400">Week:</span>{" "}
                     {activeEntry.weekLabel || activeEntry.dateRange || "Week"}
                   </div>
+
+                  {activePersonKey && (
+                    <div className="mt-3">
+                      <Link
+                        to={`/winner/${safeKey(activePersonKey)}`}
+                        className="inline-flex items-center gap-2 rounded-md bg-zinc-100/10 hover:bg-zinc-100/20 border border-zinc-700 px-3 py-2 text-sm text-white transition-colors"
+                      >
+                        View profile <span aria-hidden>↗</span>
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -435,26 +432,31 @@ export default function Wbc() {
                   This entry was selected as Weekly Best Content for{" "}
                   {activeEntry.weekLabel || activeEntry.dateRange || "this week"} in{" "}
                   {activeEntry.month}{" "}
-                  {activeEntry.year ? `(${activeEntry.year})` : selectedYear ? `(${selectedYear})` : ""}.
+                  {activeEntry.year
+                    ? `(${activeEntry.year})`
+                    : selectedYear
+                    ? `(${selectedYear})`
+                    : ""}.
                 </p>
 
-                {activeEntry.link && (
-                  <a
-                    href={activeEntry.link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-md bg-zinc-100/10 hover:bg-zinc-100/20 border border-zinc-700 px-3 py-2 text-sm text-white transition-colors"
-                  >
-                    View content <span aria-hidden>↗</span>
-                  </a>
-                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {activeEntry.link && (
+                    <a
+                      href={activeEntry.link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-md bg-zinc-100/10 hover:bg-zinc-100/20 border border-zinc-700 px-3 py-2 text-sm text-white transition-colors"
+                    >
+                      View content <span aria-hidden>↗</span>
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
           </section>
         )}
       </div>
 
-      {/* Week picker popup */}
       {selectedMonth && showWeekDialog && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center">
           <div
@@ -465,8 +467,7 @@ export default function Wbc() {
           <div className="relative w-[min(95vw,650px)] rounded-2xl bg-zinc-950 border border-zinc-800 p-5">
             <div className="flex items-center justify-between gap-4 mb-4">
               <h2 className="text-lg font-semibold">
-                Select winner: {selectedMonth}{" "}
-                {selectedYear ? `(${selectedYear})` : ""}
+                Select winner: {selectedMonth} {selectedYear ? `(${selectedYear})` : ""}
               </h2>
 
               <div className="flex items-center gap-2">
@@ -511,13 +512,9 @@ export default function Wbc() {
                       <div className="text-sm font-semibold text-white truncate">
                         {entry.weekLabel || `Week ${index + 1}`}
                       </div>
-                      <div className="text-xs text-zinc-300 truncate">
-                        {entry.name}
-                      </div>
+                      <div className="text-xs text-zinc-300 truncate">{entry.name}</div>
                       {entry.dateRange && (
-                        <div className="text-[11px] text-zinc-400">
-                          {entry.dateRange}
-                        </div>
+                        <div className="text-[11px] text-zinc-400">{entry.dateRange}</div>
                       )}
                     </div>
                   </div>

@@ -1,5 +1,6 @@
+// Hof.jsx
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 
 const CATEGORY_SLUGS = [
   { slug: "overall", label: "All" },
@@ -10,7 +11,7 @@ const CATEGORY_SLUGS = [
 ];
 
 const normalizeCategory = (cat = "") => {
-  const s = cat.toLowerCase();
+  const s = String(cat || "").toLowerCase();
   if (s.includes("written")) return "written";
   if (s.includes("visual") || s.includes("art")) return "visual";
   if (s.includes("meme")) return "meme";
@@ -20,6 +21,8 @@ const normalizeCategory = (cat = "") => {
 
 const personKeyOf = (entry) =>
   (entry.personId || entry.name || "").trim().toLowerCase();
+
+const safeKey = (s) => encodeURIComponent((s || "").trim().toLowerCase());
 
 function DiscordIcon() {
   return (
@@ -64,7 +67,9 @@ function SearchBox({ value, onChange }) {
   );
 }
 
-function ProfileCard({ entry, wins, onViewProfile, showFirstBadge }) {
+function ProfileCard({ entry, wins, showFirstBadge }) {
+  const key = safeKey(personKeyOf(entry));
+
   return (
     <div className="glass-tile-watery relative p-4">
       <div className="flex items-center gap-3">
@@ -115,13 +120,12 @@ function ProfileCard({ entry, wins, onViewProfile, showFirstBadge }) {
           <span className="text-white font-semibold">{wins}</span> HoF wins
         </div>
 
-        <button
-          type="button"
-          onClick={onViewProfile}
+        <Link
+          to={`/winner/${key}`}
           className="inline-flex items-center gap-2 rounded-md bg-zinc-100/10 hover:bg-zinc-100/20 border border-zinc-700 px-3 py-2 text-sm text-white transition-colors"
         >
           View profile <span aria-hidden>↗</span>
-        </button>
+        </Link>
       </div>
     </div>
   );
@@ -144,11 +148,8 @@ const MONTH_ORDER = [
 
 function parseMonthString(label) {
   if (!label) return -1;
-
-  // handles "October", "October, 2025", "October 2025"
   const monthPart = label.split(",")[0].trim().split(" ")[0];
   const idx = MONTH_ORDER.indexOf(monthPart);
-
   return idx === -1 ? -1 : idx;
 }
 
@@ -156,7 +157,6 @@ export default function Hof() {
   const [params, setParams] = useSearchParams();
 
   const [query, setQuery] = useState("");
-  const [selectedPersonKey, setSelectedPersonKey] = useState(null);
 
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -186,7 +186,7 @@ export default function Hof() {
           discord: row.discord || "",
           x: row.x_handle || row.x || "",
           month: row.month || "",
-          year: row.year ? Number(row.year) : null, // IMPORTANT
+          year: row.year ? Number(row.year) : null,
           category: row.category || "",
           link: row.link || "",
           placement:
@@ -221,15 +221,13 @@ export default function Hof() {
 
   const years = useMemo(() => {
     const set = new Set();
-    for (const e of entries) {
-      if (e.year) set.add(e.year);
-    }
+    for (const e of entries) if (e.year) set.add(e.year);
     const arr = Array.from(set);
     arr.sort((a, b) => b - a);
     return arr;
   }, [entries]);
 
-  // If no year is in URL, default it to newest year in data (prevents conflicts)
+  // Default year in URL to newest year in data
   useEffect(() => {
     if (!entries.length) return;
     if (yearParam) return;
@@ -252,7 +250,7 @@ export default function Hof() {
     return arr;
   }, [entries, yearParam]);
 
-  // Count wins by person (respecting year filter when present)
+  // Count wins by person (respect year filter)
   const winsByPerson = useMemo(() => {
     const map = new Map();
     for (const e of entries) {
@@ -264,31 +262,10 @@ export default function Hof() {
     return map;
   }, [entries, yearParam]);
 
-  const selectedPersonEntries = useMemo(() => {
-    if (!selectedPersonKey) return [];
-    return entries.filter((e) => {
-      if (yearParam && e.year !== yearParam) return false;
-      return personKeyOf(e) === selectedPersonKey;
-    });
-  }, [entries, selectedPersonKey, yearParam]);
-
-  const selectedProfile = useMemo(() => {
-    if (!selectedPersonEntries.length) return null;
-    const first = selectedPersonEntries[0];
-    return {
-      name: first.name,
-      avatar: first.avatar,
-      discord: first.discord,
-      x: first.x,
-      wins: winsByPerson.get(selectedPersonKey) || selectedPersonEntries.length,
-    };
-  }, [selectedPersonEntries, winsByPerson, selectedPersonKey]);
-
   const setCategory = (slug) => {
     const next = new URLSearchParams(params);
     next.set("category", slug);
     setParams(next, { replace: true });
-    setSelectedPersonKey(null);
   };
 
   const setYear = (y) => {
@@ -296,11 +273,10 @@ export default function Hof() {
     if (y) next.set("year", String(y));
     else next.delete("year");
 
-    // Optional: avoid "November from different year" mismatch
+    // Avoid month mismatch across years
     next.delete("month");
 
     setParams(next, { replace: true });
-    setSelectedPersonKey(null);
   };
 
   const setMonth = (m) => {
@@ -308,7 +284,6 @@ export default function Hof() {
     if (m) next.set("month", m);
     else next.delete("month");
     setParams(next, { replace: true });
-    setSelectedPersonKey(null);
   };
 
   const clearAll = () => {
@@ -317,12 +292,6 @@ export default function Hof() {
     if (years[0]) next.set("year", String(years[0]));
     setParams(next, { replace: true });
     setQuery("");
-    setSelectedPersonKey(null);
-  };
-
-  const handleQueryChange = (value) => {
-    setQuery(value);
-    setSelectedPersonKey(null);
   };
 
   const showClear =
@@ -337,19 +306,25 @@ export default function Hof() {
         _cat: normalizeCategory(e.category),
         _hay: [e.name, e.discord, e.x].filter(Boolean).join(" ").toLowerCase(),
       }))
-      .filter((e) => (activeCatSlug === "overall" ? true : e._cat === activeCatSlug))
+      .filter((e) =>
+        activeCatSlug === "overall" ? true : e._cat === activeCatSlug
+      )
       .filter((e) => (yearParam ? e.year === yearParam : true))
       .filter((e) => (monthParam ? e.month === monthParam : true))
       .filter((e) => (q ? e._hay.includes(q) : true));
 
-    // month view sorting: prioritize placement 1, then placement numeric, then newest
+    // Month view sorting: placement first, then numeric placement, then newest
     if (monthParam) {
       list = [...list].sort((a, b) => {
         const aFirst = a.placement === 1 ? 0 : 1;
         const bFirst = b.placement === 1 ? 0 : 1;
         if (aFirst !== bFirst) return aFirst - bFirst;
 
-        if (a.placement != null && b.placement != null && a.placement !== b.placement) {
+        if (
+          a.placement != null &&
+          b.placement != null &&
+          a.placement !== b.placement
+        ) {
           return a.placement - b.placement;
         }
 
@@ -373,13 +348,8 @@ export default function Hof() {
       if (!key) continue;
 
       const current = byPerson.get(key);
-      if (!current) {
-        byPerson.set(key, e);
-      } else {
-        if ((e.createdAt || 0) > (current.createdAt || 0)) {
-          byPerson.set(key, e);
-        }
-      }
+      if (!current) byPerson.set(key, e);
+      else if ((e.createdAt || 0) > (current.createdAt || 0)) byPerson.set(key, e);
     }
 
     const arr = Array.from(byPerson.values());
@@ -397,18 +367,7 @@ export default function Hof() {
   const headerMonth = monthParam || "All months";
   const headerCatLabel =
     CATEGORY_SLUGS.find((c) => c.slug === activeCatSlug)?.label || "All";
-
   const headerYear = yearParam || years[0] || "";
-
-  const openMonthDialog = () => setShowMonthDialog(true);
-  const closeMonthDialog = () => setShowMonthDialog(false);
-
-  const handleViewProfile = (rawKey) => {
-    const key = (rawKey || "").trim().toLowerCase();
-    if (!key) return;
-    setSelectedPersonKey(key);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
 
   return (
     <div className="min-h-screen bg-[#0e0505] text-white">
@@ -428,13 +387,12 @@ export default function Hof() {
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <button
-            onClick={openMonthDialog}
+            onClick={() => setShowMonthDialog(true)}
             className="rounded-lg px-4 py-2 text-sm font-semibold bg-zinc-900/90 border border-zinc-800 hover:border-red-500 transition-colors"
           >
             Select Month
           </button>
 
-          {/* Year selector (top level) */}
           {years.length > 0 && (
             <select
               value={yearParam || years[0]}
@@ -470,7 +428,7 @@ export default function Hof() {
         </div>
 
         <div className="mt-4">
-          <SearchBox value={query} onChange={handleQueryChange} />
+          <SearchBox value={query} onChange={setQuery} />
         </div>
 
         {loading && (
@@ -479,112 +437,6 @@ export default function Hof() {
           </p>
         )}
         {error && <p className="mt-6 text-sm text-red-400">Error: {error}</p>}
-
-        {selectedProfile && (
-          <section className="mt-8 space-y-4">
-            <div className="glass-tile-watery p-5 sm:p-6 flex flex-col sm:flex-row gap-4 sm:items-center">
-              <div className="h-16 w-16 rounded-2xl bg-slate-900/60 overflow-hidden flex items-center justify-center text-xl font-semibold">
-                {selectedProfile.avatar ? (
-                  <img
-                    src={selectedProfile.avatar}
-                    alt={selectedProfile.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span>{selectedProfile.name?.[0] || "?"}</span>
-                )}
-              </div>
-
-              <div className="flex-1 space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-xl sm:text-2xl font-semibold">
-                    {selectedProfile.name}
-                  </h2>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 border border-red-400/50 text-red-100">
-                    {selectedProfile.wins} HoF wins
-                  </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-black/40 border border-white/15 text-zinc-200">
-                    Selected profile
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap gap-3 text-xs sm:text-sm text-slate-300">
-                  {selectedProfile.discord && (
-                    <a
-                      href={`https://discord.com/users/${selectedProfile.discord}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 underline underline-offset-4"
-                    >
-                      <DiscordIcon />
-                      <span>@{selectedProfile.discord}</span>
-                    </a>
-                  )}
-                  {selectedProfile.x && (
-                    <a
-                      href={`https://x.com/${selectedProfile.x}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 underline underline-offset-4"
-                    >
-                      <XIcon />
-                      <span>@{selectedProfile.x}</span>
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setSelectedPersonKey(null)}
-                className="self-start rounded-md border border-zinc-700 bg-black/40 px-3 py-1.5 text-xs sm:text-sm text-zinc-200 hover:bg-black/60"
-              >
-                Clear selection
-              </button>
-            </div>
-
-            <div className="glass-tile-watery p-5 sm:p-6">
-              <h3 className="text-lg font-semibold mb-3">Winning content links</h3>
-
-              {selectedPersonEntries.length === 0 ? (
-                <p className="text-sm text-slate-300">
-                  No Hall of Fame entries yet for this miner.
-                </p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {selectedPersonEntries.map((entry) => (
-                    <li
-                      key={entry.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-black/30 px-3 py-2"
-                    >
-                      <div className="space-y-0.5">
-                        <p className="font-medium text-slate-100">
-                          {entry.month} {entry.year ? `(${entry.year})` : ""} · {entry.category}
-                          {entry.placement === 1 && monthParam === entry.month && (
-                            <span className="ml-2 text-[11px] px-2 py-[1px] rounded-full bg-yellow-400/15 border border-yellow-400/60 text-yellow-100">
-                              1st place
-                            </span>
-                          )}
-                        </p>
-                      </div>
-
-                      {entry.link && (
-                        <a
-                          href={entry.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center text-xs font-medium px-3 py-1 rounded-full border border-red-400/70 bg-red-500/20 hover:bg-red-500/30"
-                        >
-                          View content
-                        </a>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
-        )}
 
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
           {!loading && displayEntries.length === 0 ? (
@@ -608,7 +460,6 @@ export default function Hof() {
                   entry={entry}
                   wins={wins}
                   showFirstBadge={showFirstBadge}
-                  onViewProfile={() => handleViewProfile(key)}
                 />
               );
             })
@@ -616,12 +467,11 @@ export default function Hof() {
         </div>
       </div>
 
-      {/* Month dialog (with Year selector) */}
       {showMonthDialog && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/70"
-            onClick={closeMonthDialog}
+            onClick={() => setShowMonthDialog(false)}
           />
           <div className="relative w-[min(95vw,650px)] rounded-2xl bg-zinc-950 border border-zinc-800 p-5">
             <div className="flex items-center justify-between gap-4 mb-4">
@@ -643,7 +493,7 @@ export default function Hof() {
                 )}
 
                 <button
-                  onClick={closeMonthDialog}
+                  onClick={() => setShowMonthDialog(false)}
                   className="rounded-md px-3 py-1.5 text-sm bg-zinc-900 border border-zinc-700 hover:bg-zinc-800"
                 >
                   Close
@@ -655,7 +505,7 @@ export default function Hof() {
               <button
                 onClick={() => {
                   setMonth("");
-                  closeMonthDialog();
+                  setShowMonthDialog(false);
                 }}
                 className={[
                   "rounded-md px-3 py-2 text-sm border transition-colors",
@@ -672,7 +522,7 @@ export default function Hof() {
                   key={m}
                   onClick={() => {
                     setMonth(m);
-                    closeMonthDialog();
+                    setShowMonthDialog(false);
                   }}
                   className={[
                     "rounded-md px-3 py-2 text-sm border transition-colors",
