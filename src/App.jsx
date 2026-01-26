@@ -11,25 +11,42 @@ import AdminDashboard from "./pages/AdminDashboard.jsx";
 import WinnerProfileWbc from "./pages/WinnerProfileWbc";
 import WinnerProfile from "./pages/WinnerProfile";
 
-
 export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
+
+      {/* Cinematic background wrapper */}
+      <div className="rs-cinema min-h-screen flex flex-col text-zinc-100">
         <Nav />
 
-        <main className="flex-1">
+        <main className="flex-1 relative z-10">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/hof" element={<HoF />} />
             <Route path="/wbc/select" element={<WbcMonthSelect />} />
             <Route path="/wbc" element={<WBC />} />
-            <Route path="/wbc/winner/:personKey" element={<WinnerProfileWbc />} />
+            <Route
+              path="/wbc/winner/:personKey"
+              element={<WinnerProfileWbc />}
+            />
             <Route path="/winner/:key" element={<WinnerProfile />} />
-            <Route path="*" element={<div className="p-6">Not Found</div>} />
-            <Route path="/redstoney-room/login" element={<AdminLogin />} />
-            <Route path="/redstoney-room" element={<AdminDashboard />} />
+
+            {/* Admin */}
+            <Route
+              path="/redstoney-room/login"
+              element={<AdminLogin />}
+            />
+            <Route
+              path="/redstoney-room"
+              element={<AdminDashboard />}
+            />
+
+            {/* Fallback */}
+            <Route
+              path="*"
+              element={<div className="p-6">Not Found</div>}
+            />
           </Routes>
         </main>
 
