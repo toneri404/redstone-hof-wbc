@@ -1,12 +1,14 @@
-import React, { useEffect, useState, memo, useMemo } from "react";
+// src/pages/Home.jsx
+import React, { useEffect, useMemo, useState, memo } from "react";
 import { motion } from "framer-motion";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import hofBg from "../assets/temp-hof-bg.png";
 import homeBg from "../assets/home.png";
 import wbcBg from "../assets/temp-wbc.png";
 import redstoneLogoPng from "../assets/redstone-logo.png";
 import WbcMonthOverlay from "../components/ui/WbcMonthOverlay.jsx";
 import HofMonthOverlay from "../components/ui/HofMonthOverlay.jsx";
+import Avatar from "../components/ui/Avatar.jsx";
 import homeHeroVideo from "../assets/temp-home-hero.mp4";
 
 function TypewriterLine({
@@ -145,79 +147,183 @@ const MONTH_ORDER = [
   "December",
 ];
 
-function monthIndex(label) {
+function parseMonth(label = "") {
   if (!label) return -1;
-  const monthPart = label.split(",")[0].trim().split(" ")[0];
+  const monthPart = String(label).split(",")[0].trim().split(" ")[0];
   const idx = MONTH_ORDER.indexOf(monthPart);
   return idx === -1 ? -1 : idx;
 }
 
-function personKeyOf(entry) {
-  return (entry.personId || entry.name || "").trim().toLowerCase();
-}
-
-const normalizeHofCategory = (cat = "") => {
+function normalizeHofCategory(cat = "") {
   const s = String(cat || "").toLowerCase();
   if (s.includes("written")) return "written";
   if (s.includes("visual") || s.includes("art")) return "visual";
   if (s.includes("meme")) return "meme";
   if (s.includes("other")) return "other";
   return "overall";
-};
-
-const HOF_SPOTLIGHT_CATEGORIES = [
-  { key: "written", label: "Written content" },
-  { key: "visual", label: "Visual and Art content" },
-  { key: "meme", label: "Meme content" },
-  { key: "other", label: "Other Creative Content" },
-];
-
-function SpotlightPill({ children }) {
-  return (
-    <span className="inline-flex items-center rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] text-zinc-200">
-      {children}
-    </span>
-  );
 }
 
-function SpotlightCard({ title, subtitle, action, children }) {
+function WinnerMini({ w }) {
+  const isTba = w.name === "TBA";
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/25 backdrop-blur-sm p-5 sm:p-6 shadow-xl">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
-          {subtitle ? (
-            <p className="mt-1 text-xs text-white/70">{subtitle}</p>
+    <div className="group flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 hover:bg-black/30 transition-colors">
+      <Avatar
+        src={w.avatar}
+        name={w.name}
+        seed={w.personId || w.discord || w.x || w.name}
+        size={36}
+      />
+      <div className="min-w-0">
+        <div className="text-white font-semibold truncate">
+          {w.name}
+          {isTba ? (
+            <span className="ml-2 text-[11px] text-white/50 font-medium">
+              pending
+            </span>
           ) : null}
         </div>
-        {action}
+        <div className="text-xs text-white/70 truncate">
+          <span className="text-red-300/90">{w.label}</span>
+          {w.x ? <span className="text-white/55">  @{w.x}</span> : ""}
+        </div>
       </div>
-      <div className="mt-4">{children}</div>
+      <div className="ml-auto text-[11px] px-2 py-[2px] rounded-full bg-yellow-400/12 border border-yellow-300/35 text-yellow-100/90">
+        1st
+      </div>
     </div>
   );
 }
 
-function WinnerRow({ avatar, name, discord, x, right, subline }) {
+function SpotlightCard({
+  hofTitle,
+  hofMeta,
+  hofWinners,
+  wbcTitle,
+  wbcMeta,
+  wbcWinner,
+  onExploreHof,
+  onExploreWbc,
+  onOpenMonth,
+  onOpenWinner,
+}) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl bg-black/25 border border-white/10 p-3">
-      <div className="flex items-center gap-3 min-w-0">
-        <img
-          src={avatar || "/favicon.ico"}
-          alt={name || "Winner"}
-          className="h-10 w-10 rounded-full object-cover ring-1 ring-white/15"
-        />
-        <div className="min-w-0">
-          <div className="text-sm font-semibold text-white truncate">
-            {name || "Not set yet"}
+    <div className="glass-tile-watery relative p-6 text-left w-full">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+          <div className="text-3xl font-extrabold tracking-tight">
+            <span className="text-white">Spot</span>
+            <span className="text-red-400">light</span>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-white/70">
-            {subline ? <span className="truncate">{subline}</span> : null}
-            {discord ? <span className="truncate">@{discord}</span> : null}
-            {x ? <span className="truncate">@{x}</span> : null}
+          <div className="text-white/65 mt-1">
+            Latest highlights from HoF and WBC, auto updated from your data.
           </div>
         </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={onExploreHof}
+            className="rounded-lg px-3 py-2 text-sm font-semibold bg-zinc-100/10 hover:bg-zinc-100/20 border border-white/10 text-white transition-colors"
+          >
+            Explore HoF
+          </button>
+          <button
+            onClick={onExploreWbc}
+            className="rounded-lg px-3 py-2 text-sm font-semibold bg-zinc-100/10 hover:bg-zinc-100/20 border border-white/10 text-white transition-colors"
+          >
+            Explore WBC
+          </button>
+        </div>
       </div>
-      {right}
+
+      <div className="mt-6 rounded-2xl border border-white/10 bg-black/25 p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-xl font-extrabold text-white">
+              {hofTitle || "Hall of Fame spotlight"}
+            </div>
+            <div className="text-sm mt-1">
+              <span className="text-white/60">1st place winners</span>
+              <span className="text-white/25">  •  </span>
+              <span className="text-red-300/90">{hofMeta}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={onOpenMonth}
+            className="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold bg-zinc-100/10 hover:bg-zinc-100/20 border border-white/10 text-white transition-colors"
+          >
+            Open month
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          {hofWinners.map((w) => (
+            <WinnerMini key={w.key} w={w} />
+          ))}
+        </div>
+
+        <div className="mt-6 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+
+        <div className="mt-5 flex items-start justify-between gap-4">
+          <div>
+            <div className="text-xl font-extrabold text-white">
+              {wbcTitle || "Weekly Best Content spotlight"}
+            </div>
+            <div className="text-sm mt-1">
+              <span className="text-white/60">Latest winner</span>
+              <span className="text-white/25">  •  </span>
+              <span className="text-red-300/90">{wbcMeta}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={onOpenWinner}
+            className="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold bg-zinc-100/10 hover:bg-zinc-100/20 border border-white/10 text-white transition-colors"
+          >
+            Open winner
+          </button>
+        </div>
+
+        <div className="mt-4">
+          {wbcWinner ? (
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 hover:bg-black/30 transition-colors">
+              <Avatar
+                src={wbcWinner.avatar}
+                name={wbcWinner.name}
+                seed={
+                  wbcWinner.personId ||
+                  wbcWinner.discord ||
+                  wbcWinner.x ||
+                  wbcWinner.name
+                }
+                size={40}
+              />
+              <div className="min-w-0">
+                <div className="text-white font-semibold truncate">
+                  {wbcWinner.name}
+                </div>
+                <div className="text-xs text-white/70 truncate">
+                  <span className="text-red-300/90">{wbcWinner.label}</span>
+                  {wbcWinner.x ? (
+                    <span className="text-white/55">  @{wbcWinner.x}</span>
+                  ) : (
+                    ""
+                  )}
+                </div>
+              </div>
+              {wbcWinner.range ? (
+                <div className="ml-auto rounded-full px-3 py-1 text-xs bg-black/20 border border-white/10 text-white/80">
+                  {wbcWinner.range}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="text-sm text-white/60">
+              No WBC winner found yet.
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -227,170 +333,189 @@ export default function Home() {
   const [showMonths, setShowMonths] = useState(false);
   const [showWbcMonths, setShowWbcMonths] = useState(false);
 
-  // Spotlight data
-  const [hofEntries, setHofEntries] = useState([]);
-  const [wbcEntries, setWbcEntries] = useState([]);
+  const [hofRows, setHofRows] = useState([]);
+  const [wbcRows, setWbcRows] = useState([]);
   const [spotlightLoading, setSpotlightLoading] = useState(true);
-  const [spotlightErr, setSpotlightErr] = useState("");
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadSpotlight() {
+    async function load() {
       try {
         setSpotlightLoading(true);
-        setSpotlightErr("");
 
         const [hofRes, wbcRes] = await Promise.all([
           fetch("https://backend.minershub.online/api/hof"),
           fetch("https://backend.minershub.online/api/wbc"),
         ]);
 
-        if (!hofRes.ok) throw new Error(`HoF HTTP ${hofRes.status}`);
-        if (!wbcRes.ok) throw new Error(`WBC HTTP ${wbcRes.status}`);
+        const hofData = hofRes.ok ? await hofRes.json() : [];
+        const wbcData = wbcRes.ok ? await wbcRes.json() : [];
 
-        const hofData = await hofRes.json();
-        const wbcData = await wbcRes.json();
+        if (cancelled) return;
 
-        const hofMapped = hofData.map((row) => ({
-          id: row.id,
-          personId: row.person_id || null,
-          name: row.name || "",
-          avatar: row.avatar || "",
-          discord: row.discord || "",
-          x: row.x_handle || row.x || "",
-          month: row.month || "",
-          year: row.year ? Number(row.year) : null,
-          category: row.category || "",
-          link: row.link || "",
-          placement:
-            row.placement === null || row.placement === undefined
-              ? null
-              : Number(row.placement),
-          createdAt: row.created_at ? new Date(row.created_at).getTime() : 0,
-        }));
-
-        const wbcMapped = wbcData.map((row) => ({
-          id: row.id,
-          personId: row.person_id || null,
-          name: row.name || "",
-          avatar: row.avatar || "",
-          discord: row.discord || "",
-          x: row.x_handle || row.x || "",
-          month: row.month || "",
-          year: row.year ? Number(row.year) : null,
-          weekLabel: row.week_label || "",
-          dateRange: row.date_range || "",
-          link: row.link || "",
-          createdAt: row.created_at ? new Date(row.created_at).getTime() : 0,
-        }));
-
-        if (!cancelled) {
-          setHofEntries(hofMapped);
-          setWbcEntries(wbcMapped);
-        }
+        setHofRows(Array.isArray(hofData) ? hofData : []);
+        setWbcRows(Array.isArray(wbcData) ? wbcData : []);
       } catch (e) {
-        if (!cancelled) setSpotlightErr(e?.message || "Failed to load spotlight data.");
+        if (!cancelled) {
+          setHofRows([]);
+          setWbcRows([]);
+        }
       } finally {
         if (!cancelled) setSpotlightLoading(false);
       }
     }
 
-    loadSpotlight();
+    load();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const hofYears = useMemo(() => {
-    const set = new Set();
-    for (const e of hofEntries) if (e.year) set.add(e.year);
-    return Array.from(set).sort((a, b) => b - a);
-  }, [hofEntries]);
-
-  const wbcYears = useMemo(() => {
-    const set = new Set();
-    for (const e of wbcEntries) if (e.year) set.add(e.year);
-    return Array.from(set).sort((a, b) => b - a);
-  }, [wbcEntries]);
-
-  const latestHofYear = hofYears[0] || null;
-  const latestWbcYear = wbcYears[0] || null;
-
-  const latestHofMonth = useMemo(() => {
-    if (!latestHofYear) return "";
-    const months = new Set();
-    for (const e of hofEntries) {
-      if (e.year !== latestHofYear) continue;
-      if (e.month) months.add(e.month);
-    }
-    const arr = Array.from(months);
-    arr.sort((a, b) => monthIndex(b) - monthIndex(a));
-    return arr[0] || "";
-  }, [hofEntries, latestHofYear]);
-
-  const latestWbcMonth = useMemo(() => {
-    if (!latestWbcYear) return "";
-    const months = new Set();
-    for (const e of wbcEntries) {
-      if (e.year !== latestWbcYear) continue;
-      if (e.month) months.add(e.month);
-    }
-    const arr = Array.from(months);
-    arr.sort((a, b) => monthIndex(b) - monthIndex(a));
-    return arr[0] || "";
-  }, [wbcEntries, latestWbcYear]);
-
-  // HoF spotlight: 4 categories, each should show 1st place winner
-  const hofSpotlightByCategory = useMemo(() => {
-    if (!latestHofYear || !latestHofMonth) return [];
-
-    const monthEntries = hofEntries
-      .filter((e) => e.year === latestHofYear && e.month === latestHofMonth)
-      .map((e) => ({ ...e, _cat: normalizeHofCategory(e.category) }));
-
-    // Only winners that are explicitly 1st
-    const firstWinners = monthEntries.filter((e) => e.placement === 1);
-
-    // Pick one per category (if duplicates, take newest)
-    const pick = new Map();
-    for (const e of firstWinners) {
-      if (!HOF_SPOTLIGHT_CATEGORIES.find((c) => c.key === e._cat)) continue;
-      const existing = pick.get(e._cat);
-      if (!existing) pick.set(e._cat, e);
-      else if ((e.createdAt || 0) > (existing.createdAt || 0)) pick.set(e._cat, e);
+  const hofSpotlight = useMemo(() => {
+    if (!hofRows.length) {
+      return { year: null, month: "", winners: [] };
     }
 
-    // Return in fixed category order with placeholders when missing
-    return HOF_SPOTLIGHT_CATEGORIES.map((c) => ({
-      categoryKey: c.key,
-      categoryLabel: c.label,
-      entry: pick.get(c.key) || null,
+    const mapped = hofRows.map((row) => ({
+      id: row.id,
+      personId: row.person_id || null,
+      name: row.name || "",
+      avatar: row.avatar || "",
+      discord: row.discord || "",
+      x: row.x_handle || row.x || "",
+      month: row.month || "",
+      year: row.year ? Number(row.year) : null,
+      category: row.category || "",
+      placement:
+        row.placement === null || row.placement === undefined
+          ? null
+          : Number(row.placement),
+      createdAt: row.created_at ? new Date(row.created_at).getTime() : 0,
     }));
-  }, [hofEntries, latestHofYear, latestHofMonth]);
 
-  // WBC spotlight: keep as-is (latest by createdAt in latest month)
+    const years = Array.from(
+      new Set(mapped.map((m) => m.year).filter(Boolean))
+    ).sort((a, b) => b - a);
+
+    const newestYear = years[0] || null;
+
+    const monthsInYear = Array.from(
+      new Set(
+        mapped
+          .filter((m) => (newestYear ? m.year === newestYear : true))
+          .map((m) => m.month)
+          .filter(Boolean)
+      )
+    ).sort((a, b) => parseMonth(b) - parseMonth(a));
+
+    const newestMonth = monthsInYear[0] || "";
+
+    const monthRows = mapped.filter(
+      (m) =>
+        (newestYear ? m.year === newestYear : true) &&
+        (newestMonth ? m.month === newestMonth : true)
+    );
+
+    const firstsByCat = new Map();
+    for (const r of monthRows) {
+      if (r.placement !== 1) continue;
+      const slug = normalizeHofCategory(r.category);
+      if (!["written", "visual", "meme", "other"].includes(slug)) continue;
+
+      const existing = firstsByCat.get(slug);
+      if (!existing) firstsByCat.set(slug, r);
+      else if ((r.createdAt || 0) > (existing.createdAt || 0))
+        firstsByCat.set(slug, r);
+    }
+
+    const order = [
+      { slug: "written", label: "Written content" },
+      { slug: "visual", label: "Visual & Art content" },
+      { slug: "meme", label: "Meme content" },
+      { slug: "other", label: "Other Creative Content" },
+    ];
+
+    const winners = order
+      .map((o) => {
+        const r = firstsByCat.get(o.slug);
+        if (!r) return null;
+        return {
+          key: `${o.slug}-${r.id}`,
+          name: r.name,
+          avatar: r.avatar,
+          discord: r.discord,
+          x: r.x,
+          personId: r.personId,
+          label: o.label,
+        };
+      })
+      .filter(Boolean);
+
+    return { year: newestYear, month: newestMonth, winners };
+  }, [hofRows]);
+
   const wbcSpotlight = useMemo(() => {
-    if (!latestWbcYear || !latestWbcMonth) return null;
+    if (!wbcRows.length) return null;
 
-    const list = wbcEntries
-      .filter((e) => e.year === latestWbcYear && e.month === latestWbcMonth)
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    const mapped = wbcRows.map((row) => ({
+      id: row.id,
+      personId: row.person_id || null,
+      name: row.name || "",
+      avatar: row.avatar || "",
+      discord: row.discord || "",
+      x: row.x_handle || row.x || "",
+      month: row.month || "",
+      year: row.year ? Number(row.year) : null,
+      week: row.week || row.week_label || "",
+      range: row.week_range || row.range || "",
+      createdAt: row.created_at ? new Date(row.created_at).getTime() : 0,
+    }));
 
-    return list[0] || null;
-  }, [wbcEntries, latestWbcYear, latestWbcMonth]);
+    mapped.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
-  const hofOpenLink = latestHofYear
-    ? `/hof?year=${encodeURIComponent(String(latestHofYear))}&month=${encodeURIComponent(
-        latestHofMonth || ""
-      )}&category=overall`
-    : "/hof";
+    const top = mapped[0];
+    if (!top) return null;
 
-  const wbcOpenLink = wbcSpotlight
-    ? `/wbc?year=${encodeURIComponent(String(wbcSpotlight.year || latestWbcYear || ""))}&month=${encodeURIComponent(
-        wbcSpotlight.month || latestWbcMonth || ""
-      )}&week=${encodeURIComponent(wbcSpotlight.weekLabel || wbcSpotlight.dateRange || "")}`
-    : "/wbc";
+    return {
+      year: top.year || null,
+      month: top.month || "",
+      winner: {
+        name: top.name,
+        avatar: top.avatar,
+        discord: top.discord,
+        x: top.x,
+        personId: top.personId,
+        label: "Latest winner",
+        range: top.range || "",
+      },
+    };
+  }, [wbcRows]);
+
+  const hofMeta = hofSpotlight.year
+    ? `${hofSpotlight.month} (${hofSpotlight.year})`
+    : "No HoF data yet";
+
+  const wbcMeta = wbcSpotlight?.year
+    ? `${wbcSpotlight.month} (${wbcSpotlight.year})`
+    : "No WBC data yet";
+
+  const hofWinners4 = useMemo(() => {
+    const list = hofSpotlight.winners || [];
+    if (list.length === 4) return list;
+
+    const needed = 4 - list.length;
+    const fillers = Array.from({ length: Math.max(0, needed) }).map((_, i) => ({
+      key: `empty-${i}`,
+      name: "TBA",
+      avatar: "",
+      discord: "",
+      x: "",
+      personId: "",
+      label: "TBA",
+    }));
+    return [...list, ...fillers].slice(0, 4);
+  }, [hofSpotlight.winners]);
 
   return (
     <div
@@ -428,22 +553,18 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="relative z-10 max-w-6xl mx-auto px-4 pb-24 pt-6 md:pt-10">
+      <main className="relative z-10 max-w-6xl mx-auto px-4 pb-24 pt-2 md:pt-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12 md:mb-16"
+          className="text-center mb-10 md:mb-12"
         >
           <motion.h2
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="heading-win text-smooth
-                       text-[56px] md:text-[72px]
-                       bg-gradient-to-r from-red-500 via-rose-400 to-white
-                       bg-clip-text text-transparent tracking-tight
-                       hero-title-premium"
+            className="heading-win text-smooth text-[56px] md:text-[72px] bg-gradient-to-r from-red-500 via-rose-400 to-white bg-clip-text text-transparent tracking-tight hero-title-premium"
           >
             Discover. Create. Shine.
           </motion.h2>
@@ -451,6 +572,7 @@ export default function Home() {
           <TypewriterLine />
         </motion.div>
 
+        {/* FIRST: HoF + WBC tiles */}
         <div className="grid md:grid-cols-2 gap-8 place-items-center">
           <Tile
             title="Hall of Fame"
@@ -470,170 +592,40 @@ export default function Home() {
           />
         </div>
 
-        <motion.section
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.6 }}
-          className="mt-14 md:mt-16"
-        >
-          <div className="flex items-end justify-between gap-4 flex-wrap mb-5">
-            <div>
-              <h3 className="text-2xl md:text-3xl font-extrabold text-white">
-                Spotlight
-              </h3>
-              <p className="text-sm text-white/65 mt-1">
-                Latest highlights from HoF and WBC, auto updated from your existing data.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <Link
-                to="/hof"
-                className="rounded-lg px-3 py-2 text-sm bg-black/30 border border-white/10 text-white/85 hover:bg-black/40"
-              >
-                Explore HoF
-              </Link>
-              <Link
-                to="/wbc"
-                className="rounded-lg px-3 py-2 text-sm bg-black/30 border border-white/10 text-white/85 hover:bg-black/40"
-              >
-                Explore WBC
-              </Link>
-            </div>
-          </div>
-
+        {/* THEN: Spotlight card below */}
+        <div className="mt-10">
           {spotlightLoading ? (
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-5 text-sm text-white/70">
-              Loading spotlight...
-            </div>
-          ) : spotlightErr ? (
-            <div className="rounded-2xl border border-red-500/30 bg-black/25 p-5 text-sm text-red-200">
-              Error: {spotlightErr}
+            <div className="glass-tile-watery p-6 text-left">
+              <div className="text-white font-semibold text-lg">
+                <span className="text-white">Spot</span>
+                <span className="text-red-400">light</span>
+              </div>
+              <div className="mt-2 text-white/60 text-sm">
+                Loading latest highlights...
+              </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <SpotlightCard
-                title="Hall of Fame spotlight"
-                subtitle={
-                  latestHofYear && latestHofMonth
-                    ? `1st place winners for ${latestHofMonth} (${latestHofYear})`
-                    : "No HoF data found yet."
-                }
-                action={
-                  <Link
-                    to={hofOpenLink}
-                    className="rounded-lg px-3 py-2 text-xs sm:text-sm bg-black/30 border border-white/10 text-white/85 hover:bg-black/40"
-                  >
-                    Open month
-                  </Link>
-                }
-              >
-                <div className="flex items-center gap-2 flex-wrap">
-                  <SpotlightPill>Latest month</SpotlightPill>
-                  {latestHofYear ? <SpotlightPill>Year: {latestHofYear}</SpotlightPill> : null}
-                  {latestHofMonth ? <SpotlightPill>Month: {latestHofMonth}</SpotlightPill> : null}
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  {hofSpotlightByCategory.length === 0 ? (
-                    <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/70">
-                      Add HoF entries and they will appear here automatically.
-                    </div>
-                  ) : (
-                    hofSpotlightByCategory.map(({ categoryKey, categoryLabel, entry }) => (
-                      <WinnerRow
-                        key={categoryKey}
-                        avatar={entry?.avatar}
-                        name={entry?.name || "Not set yet"}
-                        discord={entry?.discord}
-                        x={entry?.x}
-                        subline={categoryLabel}
-                        right={
-                          <div className="flex items-center gap-2">
-                            <SpotlightPill>1st</SpotlightPill>
-                            {entry?.link ? (
-                              <a
-                                href={entry.link}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="rounded-lg px-3 py-2 text-xs bg-black/30 border border-white/10 text-white/85 hover:bg-black/40"
-                              >
-                                View
-                              </a>
-                            ) : (
-                              <span className="rounded-lg px-3 py-2 text-xs bg-black/15 border border-white/10 text-white/50">
-                                Missing
-                              </span>
-                            )}
-                          </div>
-                        }
-                      />
-                    ))
-                  )}
-                </div>
-              </SpotlightCard>
-
-              <SpotlightCard
-                title="Weekly Best Content spotlight"
-                subtitle={
-                  latestWbcYear && latestWbcMonth
-                    ? `Latest winner for ${latestWbcMonth} (${latestWbcYear})`
-                    : "No WBC data found yet."
-                }
-                action={
-                  <Link
-                    to={wbcOpenLink}
-                    className="rounded-lg px-3 py-2 text-xs sm:text-sm bg-black/30 border border-white/10 text-white/85 hover:bg-black/40"
-                  >
-                    Open winner
-                  </Link>
-                }
-              >
-                <div className="flex items-center gap-2 flex-wrap">
-                  <SpotlightPill>Latest week</SpotlightPill>
-                  {latestWbcYear ? <SpotlightPill>Year: {latestWbcYear}</SpotlightPill> : null}
-                  {latestWbcMonth ? <SpotlightPill>Month: {latestWbcMonth}</SpotlightPill> : null}
-                </div>
-
-                <div className="mt-4">
-                  {!wbcSpotlight ? (
-                    <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/70">
-                      Add at least one WBC entry and it will appear here automatically.
-                    </div>
-                  ) : (
-                    <WinnerRow
-                      avatar={wbcSpotlight.avatar}
-                      name={wbcSpotlight.name}
-                      discord={wbcSpotlight.discord}
-                      x={wbcSpotlight.x}
-                      right={
-                        <div className="flex items-center gap-2">
-                          <SpotlightPill>
-                            {wbcSpotlight.weekLabel || wbcSpotlight.dateRange || "Week"}
-                          </SpotlightPill>
-                          {wbcSpotlight.link ? (
-                            <a
-                              href={wbcSpotlight.link}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="rounded-lg px-3 py-2 text-xs bg-black/30 border border-white/10 text-white/85 hover:bg-black/40"
-                            >
-                              View
-                            </a>
-                          ) : null}
-                        </div>
-                      }
-                    />
-                  )}
-                </div>
-              </SpotlightCard>
-            </div>
+            <SpotlightCard
+              hofTitle="Hall of Fame spotlight"
+              hofMeta={hofMeta}
+              hofWinners={hofWinners4}
+              wbcTitle="Weekly Best Content spotlight"
+              wbcMeta={wbcMeta}
+              wbcWinner={wbcSpotlight?.winner || null}
+              onExploreHof={() => navigate("/hof")}
+              onExploreWbc={() => navigate("/wbc")}
+              onOpenMonth={() => setShowMonths(true)}
+              onOpenWinner={() => navigate("/wbc")}
+            />
           )}
-        </motion.section>
+        </div>
       </main>
 
       <HofMonthOverlay open={showMonths} onClose={() => setShowMonths(false)} />
-      <WbcMonthOverlay open={showWbcMonths} onClose={() => setShowWbcMonths(false)} />
+      <WbcMonthOverlay
+        open={showWbcMonths}
+        onClose={() => setShowWbcMonths(false)}
+      />
     </div>
   );
 }
