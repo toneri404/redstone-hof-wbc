@@ -1,6 +1,7 @@
-// Hof.jsx
+// src/pages/Hof.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
+import Avatar from "../components/ui/Avatar.jsx";
 
 const CATEGORY_SLUGS = [
   { slug: "overall", label: "All" },
@@ -73,11 +74,13 @@ function ProfileCard({ entry, wins, showFirstBadge }) {
   return (
     <div className="glass-tile-watery relative p-4">
       <div className="flex items-center gap-3">
-        <img
-          src={entry.avatar || "/favicon.ico"}
-          alt={entry.name}
-          className="h-11 w-11 rounded-full object-cover ring-1 ring-white/20"
+        <Avatar
+          src={entry.avatar}
+          name={entry.name}
+          seed={entry.personId || entry.discord || entry.x || entry.name}
+          size={44}
         />
+
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <div className="text-white font-semibold truncate">{entry.name}</div>
@@ -157,14 +160,12 @@ export default function Hof() {
   const [params, setParams] = useSearchParams();
 
   const [query, setQuery] = useState("");
-
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [showMonthDialog, setShowMonthDialog] = useState(false);
 
-  // Load from backend
   useEffect(() => {
     let cancelled = false;
 
@@ -227,7 +228,6 @@ export default function Hof() {
     return arr;
   }, [entries]);
 
-  // Default year in URL to newest year in data
   useEffect(() => {
     if (!entries.length) return;
     if (yearParam) return;
@@ -250,7 +250,6 @@ export default function Hof() {
     return arr;
   }, [entries, yearParam]);
 
-  // Count wins by person (respect year filter)
   const winsByPerson = useMemo(() => {
     const map = new Map();
     for (const e of entries) {
@@ -272,10 +271,7 @@ export default function Hof() {
     const next = new URLSearchParams(params);
     if (y) next.set("year", String(y));
     else next.delete("year");
-
-    // Avoid month mismatch across years
     next.delete("month");
-
     setParams(next, { replace: true });
   };
 
@@ -313,7 +309,6 @@ export default function Hof() {
       .filter((e) => (monthParam ? e.month === monthParam : true))
       .filter((e) => (q ? e._hay.includes(q) : true));
 
-    // Month view sorting: placement first, then numeric placement, then newest
     if (monthParam) {
       list = [...list].sort((a, b) => {
         const aFirst = a.placement === 1 ? 0 : 1;
@@ -340,7 +335,6 @@ export default function Hof() {
   const displayEntries = useMemo(() => {
     if (!isAllMonthsAllCat) return filteredEntries;
 
-    // Group by person, keep most recent entry for that person, then sort by total wins
     const byPerson = new Map();
 
     for (const e of filteredEntries) {
@@ -433,7 +427,8 @@ export default function Hof() {
 
         {loading && (
           <p className="mt-6 text-sm text-zinc-400">
-            Loading Hall of Fame winners...(waking up the server, this can take a few seconds on first load)
+            Loading Hall of Fame winners...(waking up the server, this can take a
+            few seconds on first load)
           </p>
         )}
         {error && <p className="mt-6 text-sm text-red-400">Error: {error}</p>}
