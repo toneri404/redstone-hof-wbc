@@ -1,7 +1,9 @@
+// src/components/ui/HofMonthOverlay.jsx
 import { memo, useMemo, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { normalizeCategory } from "../../data/hof.js";
+import { createPortal } from "react-dom";
 
 const SECTIONS = [
   { key: "written", label: "Written content" },
@@ -11,8 +13,18 @@ const SECTIONS = [
 ];
 
 const MONTH_ORDER = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 function monthIndex(label) {
@@ -177,8 +189,17 @@ export default function HofMonthOverlay({ open, onClose }) {
 
   const [entries, setEntries] = useState([]);
   const [error, setError] = useState(null);
-
   const [selectedYear, setSelectedYear] = useState(null);
+
+  // lock background scroll while open
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -197,7 +218,7 @@ export default function HofMonthOverlay({ open, onClose }) {
           name: row.name || "",
           avatar: row.avatar || "",
           month: row.month || "",
-          year: safeYear(row.year), // مهم
+          year: safeYear(row.year),
           category: row.category || "",
           placement:
             row.placement === null || row.placement === undefined
@@ -231,7 +252,7 @@ export default function HofMonthOverlay({ open, onClose }) {
   useEffect(() => {
     if (!years.length) return;
     if (selectedYear == null) {
-      setSelectedYear(years[0]); // newest year
+      setSelectedYear(years[0]);
     } else if (!years.includes(selectedYear)) {
       setSelectedYear(years[0]);
     }
@@ -259,98 +280,104 @@ export default function HofMonthOverlay({ open, onClose }) {
 
   const goMonth = (m) => {
     onClose?.();
-    // keep year in URL so /hof shows the right year (optional but recommended)
     const params = new URLSearchParams();
     params.set("month", m);
     if (selectedYear) params.set("year", String(selectedYear));
     navigate(`/hof?${params.toString()}`);
   };
 
-  return (
+  if (!open) return null;
+
+  return createPortal(
     <AnimatePresence>
-      {open && (
+      <motion.div
+        className="fixed inset-0 flex items-center justify-center"
+        style={{ zIndex: 2147483647 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+
         <motion.div
-          className="fixed inset-0 z-[70] flex items-center justify-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          initial={{ scale: 0.96, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.96, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 260, damping: 26 }}
+          className="relative w-[min(95vw,1100px)] max-h-[88vh] overflow-auto rounded-2xl bg-[#0e0505] border border-zinc-800 p-6 pt-7"
         >
-          <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-
-          <motion.div
-            initial={{ scale: 0.96, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.96, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 26 }}
-            className="relative w-[min(95vw,1100px)] max-h-[88vh] overflow-auto rounded-2xl bg-[#0e0505] border border-zinc-800 p-6"
-          >
-            <div className="flex items-center justify-between gap-4 sticky top-0 bg-[#0e0505] pb-4">
-              <div className="text-xl font-semibold">
-                Select Month • <span className="text-red-400">Hall of Fame</span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                {years.length > 0 && (
-                  <YearPicker
-                    years={years}
-                    value={selectedYear}
-                    onChange={setSelectedYear}
-                  />
-                )}
-                <button
-                  onClick={onClose}
-                  className="rounded-md px-3 py-1.5 text-sm bg-zinc-900 border border-zinc-700 hover:bg-zinc-800"
-                >
-                  Close
-                </button>
-              </div>
+          <div className="flex items-center justify-between gap-4 sticky top-0 bg-[#0e0505] pb-4 pt-1">
+            <div className="text-xl font-semibold">
+              Select Month • <span className="text-red-400">Hall of Fame</span>
             </div>
 
-            {error && (
-              <p className="mt-1 mb-3 text-xs text-red-300">
-                Error loading data: {error}
-              </p>
-            )}
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 pt-2">
-              <motion.button
-                onClick={goAll}
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.985 }}
-                transition={{ type: "spring", stiffness: 220, damping: 20 }}
-                className="
-                  relative p-5 rounded-2xl text-left overflow-hidden
-                  bg-gradient-to-br from-red-700 via-red-700/70 to-red-900
-                  border border-white/10 shadow-[0_10px_40px_rgba(255,0,0,.15)]
-                "
+            <div className="flex items-center gap-3">
+              {years.length > 0 && (
+                <YearPicker
+                  years={years}
+                  value={selectedYear}
+                  onChange={setSelectedYear}
+                />
+              )}
+              <button
+                onClick={onClose}
+                className="rounded-md px-3 py-1.5 text-sm bg-zinc-900 border border-zinc-700 hover:bg-zinc-800"
               >
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-white/5 mix-blend-soft-light pointer-events-none" />
-                <div className="relative z-10">
-                  <div className="text-sm text-white/85">Hall of Fame</div>
-                  <div className="mt-0.5 text-2xl font-bold text-white">
-                    View all winners
-                  </div>
-                  <div className="mt-4 text-sm text-white/85">
-                    • Browse every month and category
-                  </div>
-                </div>
-              </motion.button>
-
-              {months.map((m) => (
-                <MonthTile key={m} month={m} entries={entriesForYear} onOpen={goMonth} />
-              ))}
+                Close
+              </button>
             </div>
+          </div>
 
-            {years.length > 0 && months.length === 0 && (
-              <p className="mt-4 text-sm text-zinc-400">
-                No HoF data found for {selectedYear}.
-              </p>
-            )}
-          </motion.div>
+          {error && (
+            <p className="mt-1 mb-3 text-xs text-red-300">
+              Error loading data: {error}
+            </p>
+          )}
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 pt-2">
+            <motion.button
+              onClick={goAll}
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.985 }}
+              transition={{ type: "spring", stiffness: 220, damping: 20 }}
+              className="
+                relative p-5 rounded-2xl text-left overflow-hidden
+                bg-gradient-to-br from-red-700 via-red-700/70 to-red-900
+                border border-white/10 shadow-[0_10px_40px_rgba(255,0,0,.15)]
+              "
+            >
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-white/5 mix-blend-soft-light pointer-events-none" />
+              <div className="relative z-10">
+                <div className="text-sm text-white/85">Hall of Fame</div>
+                <div className="mt-0.5 text-2xl font-bold text-white">
+                  View all winners
+                </div>
+                <div className="mt-4 text-sm text-white/85">
+                  • Browse every month and category
+                </div>
+              </div>
+            </motion.button>
+
+            {months.map((m) => (
+              <MonthTile
+                key={m}
+                month={m}
+                entries={entriesForYear}
+                onOpen={goMonth}
+              />
+            ))}
+          </div>
+
+          {years.length > 0 && months.length === 0 && (
+            <p className="mt-4 text-sm text-zinc-400">
+              No HoF data found for {selectedYear}.
+            </p>
+          )}
         </motion.div>
-      )}
-    </AnimatePresence>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
   );
 }
