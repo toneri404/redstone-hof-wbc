@@ -215,7 +215,7 @@ function SpotlightCard({
             <span className="text-red-400">light</span>
           </div>
           <div className="text-white/65 mt-1">
-            Latest highlights from HoF and WBC, auto updated from your data.
+            Latest highlights from HoF and WBC.
           </div>
         </div>
 
