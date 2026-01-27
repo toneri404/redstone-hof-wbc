@@ -34,8 +34,8 @@ function TypewriterLine({
   }, [text, speed, startDelay]);
 
   return (
-    <div className="w-full flex justify-center mt-2">
-      <span className="whitespace-nowrap text-white/80 font-brand text-center">
+    <div className="w-full flex justify-center mt-2 px-3">
+      <span className="text-white/80 font-brand text-center text-sm sm:text-base md:text-lg leading-snug">
         {text.slice(0, i)}
       </span>
       <span className="rs-caret" aria-hidden />
@@ -184,7 +184,7 @@ function WinnerMini({ w }) {
         </div>
         <div className="text-xs text-white/70 truncate">
           <span className="text-red-300/90">{w.label}</span>
-          {w.x ? <span className="text-white/55">  @{w.x}</span> : ""}
+          {w.x ? <span className="text-white/55"> @{w.x}</span> : ""}
         </div>
       </div>
       <div className="ml-auto text-[11px] px-2 py-[2px] rounded-full bg-yellow-400/12 border border-yellow-300/35 text-yellow-100/90">
@@ -243,7 +243,7 @@ function SpotlightCard({
             </div>
             <div className="text-sm mt-1">
               <span className="text-white/60">1st place winners</span>
-              <span className="text-white/25">  •  </span>
+              <span className="text-white/25"> • </span>
               <span className="text-red-300/90">{hofMeta}</span>
             </div>
           </div>
@@ -271,7 +271,7 @@ function SpotlightCard({
             </div>
             <div className="text-sm mt-1">
               <span className="text-white/60">Latest winner</span>
-              <span className="text-white/25">  •  </span>
+              <span className="text-white/25"> • </span>
               <span className="text-red-300/90">{wbcMeta}</span>
             </div>
           </div>
@@ -305,7 +305,7 @@ function SpotlightCard({
                 <div className="text-xs text-white/70 truncate">
                   <span className="text-red-300/90">{wbcWinner.label}</span>
                   {wbcWinner.x ? (
-                    <span className="text-white/55">  @{wbcWinner.x}</span>
+                    <span className="text-white/55"> @{wbcWinner.x}</span>
                   ) : (
                     ""
                   )}
@@ -332,6 +332,19 @@ export default function Home() {
   const navigate = useNavigate();
   const [showMonths, setShowMonths] = useState(false);
   const [showWbcMonths, setShowWbcMonths] = useState(false);
+
+  // NEW: prevent scroll behind overlays (mobile fix)
+  useEffect(() => {
+    const open = showMonths || showWbcMonths;
+    if (!open) {
+      document.body.style.overflow = "";
+      return;
+    }
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showMonths, showWbcMonths]);
 
   const [hofRows, setHofRows] = useState([]);
   const [wbcRows, setWbcRows] = useState([]);
@@ -539,11 +552,12 @@ export default function Home() {
 
       <div className="absolute inset-0 bg-black/55 backdrop-blur-[1px]" />
 
-      <header className="relative z-10 max-w-6xl mx-auto px-4 py-8 flex items-center justify-between">
+      {/* NEW: top padding so fixed navbar never overlaps Home header */}
+      <header className="relative z-10 max-w-6xl mx-auto px-4 pt-24 sm:pt-28 pb-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <RedstoneMark />
-          <div>
-            <h1 className="font-brandDisplay text-4xl text-white">
+          <div className="min-w-0">
+            <h1 className="font-brandDisplay text-2xl sm:text-3xl md:text-4xl text-white">
               RedStone Community <span className="text-red-400">Hub</span>
             </h1>
             <p className="text-xs md:text-sm text-white/60 italic">
@@ -564,7 +578,10 @@ export default function Home() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="heading-win text-smooth text-[56px] md:text-[72px] bg-gradient-to-r from-red-500 via-rose-400 to-white bg-clip-text text-transparent tracking-tight hero-title-premium"
+            className="heading-win text-smooth bg-gradient-to-r from-red-500 via-rose-400 to-white bg-clip-text text-transparent tracking-tight hero-title-premium
+                       text-[42px] leading-[1.05]
+                       sm:text-[56px] sm:leading-[1.02]
+                       md:text-[72px]"
           >
             Discover. Create. Shine.
           </motion.h2>
