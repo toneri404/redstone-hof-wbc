@@ -8,7 +8,7 @@ import wbcBg from "../assets/temp-wbc.png";
 import redstoneLogoPng from "../assets/redstone-logo.png";
 import WbcMonthOverlay from "../components/ui/WbcMonthOverlay.jsx";
 import HofMonthOverlay from "../components/ui/HofMonthOverlay.jsx";
-//import Avatar from "../components/ui/Avatar.jsx";
+import Avatar from "../components/ui/Avatar.jsx";
 import homeHeroVideo from "../assets/temp-home-hero.mp4";
 
 function TypewriterLine({
