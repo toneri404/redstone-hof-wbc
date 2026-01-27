@@ -1,13 +1,13 @@
 import React, { useEffect, useState, memo, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, Link } from "react-router-dom";
-import hofBg from "../assets/hof-bg.png";
+import hofBg from "../assets/temp-hof-bg.png";
 import homeBg from "../assets/home.png";
-import wbcBg from "../assets/wbc.png";
+import wbcBg from "../assets/temp-wbc.png";
 import redstoneLogoPng from "../assets/redstone-logo.png";
 import WbcMonthOverlay from "../components/ui/WbcMonthOverlay.jsx";
 import HofMonthOverlay from "../components/ui/HofMonthOverlay.jsx";
-import homeHeroVideo from "../assets/home-hero.mp4";
+import homeHeroVideo from "../assets/temp-home-hero.mp4";
 
 function TypewriterLine({
   text = "Forged by builders. Inspired by creators. Immortalized in RedStone.",
