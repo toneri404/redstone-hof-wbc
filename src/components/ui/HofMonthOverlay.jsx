@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { normalizeCategory } from "../../data/hof.js";
 import { createPortal } from "react-dom";
+import Avatar from "./Avatar.jsx";
 
 const SECTIONS = [
   { key: "written", label: "Written content" },
@@ -29,13 +30,22 @@ const MONTH_ORDER = [
 
 function monthIndex(label) {
   if (!label) return -1;
-  const monthPart = label.split(",")[0].trim().split(" ")[0];
+  const monthPart = String(label).split(",")[0].trim().split(" ")[0];
   return MONTH_ORDER.indexOf(monthPart);
 }
 
 function safeYear(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+function cleanAvatarSrc(value) {
+  if (value === null || value === undefined) return "";
+  const s = String(value).trim();
+  if (!s) return "";
+  if (s.toLowerCase() === "null") return "";
+  if (s.toLowerCase() === "undefined") return "";
+  return s;
 }
 
 function YearPicker({ years, value, onChange }) {
@@ -163,10 +173,11 @@ const MonthTile = memo(function MonthTile({ month, entries, onOpen }) {
                     key={w.id ?? `${w.name}-${w.category}`}
                     className="inline-flex items-center justify-center rounded-full bg-black/35 px-1.5 py-1"
                   >
-                    <img
-                      src={w.avatar || "/favicon.ico"}
-                      alt={w.name}
-                      className="h-7 w-7 rounded-full object-cover ring-1 ring-white/15"
+                    <Avatar
+                      src={cleanAvatarSrc(w.avatar)}
+                      name={w.name}
+                      seed={w.personId || w.discord || w.x || w.name || w.id}
+                      size={28}
                     />
                   </div>
                 ))}
@@ -213,10 +224,13 @@ export default function HofMonthOverlay({ open, onClose }) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        const mapped = data.map((row) => ({
+        const mapped = (Array.isArray(data) ? data : []).map((row) => ({
           id: row.id,
+          personId: row.person_id || null,
           name: row.name || "",
           avatar: row.avatar || "",
+          discord: row.discord || "",
+          x: row.x_handle || row.x || "",
           month: row.month || "",
           year: safeYear(row.year),
           category: row.category || "",
@@ -251,11 +265,8 @@ export default function HofMonthOverlay({ open, onClose }) {
 
   useEffect(() => {
     if (!years.length) return;
-    if (selectedYear == null) {
-      setSelectedYear(years[0]);
-    } else if (!years.includes(selectedYear)) {
-      setSelectedYear(years[0]);
-    }
+    if (selectedYear == null) setSelectedYear(years[0]);
+    else if (!years.includes(selectedYear)) setSelectedYear(years[0]);
   }, [years, selectedYear]);
 
   const entriesForYear = useMemo(() => {
@@ -313,11 +324,7 @@ export default function HofMonthOverlay({ open, onClose }) {
 
             <div className="flex items-center gap-3">
               {years.length > 0 && (
-                <YearPicker
-                  years={years}
-                  value={selectedYear}
-                  onChange={setSelectedYear}
-                />
+                <YearPicker years={years} value={selectedYear} onChange={setSelectedYear} />
               )}
               <button
                 onClick={onClose}
@@ -361,12 +368,7 @@ export default function HofMonthOverlay({ open, onClose }) {
             </motion.button>
 
             {months.map((m) => (
-              <MonthTile
-                key={m}
-                month={m}
-                entries={entriesForYear}
-                onOpen={goMonth}
-              />
+              <MonthTile key={m} month={m} entries={entriesForYear} onOpen={goMonth} />
             ))}
           </div>
 

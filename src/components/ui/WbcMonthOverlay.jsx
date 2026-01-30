@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
+import Avatar from "./Avatar.jsx";
 
 const MONTH_ORDER = [
   "January",
@@ -27,6 +28,15 @@ function monthIndex(label) {
 function safeYear(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+function cleanAvatarSrc(value) {
+  if (value === null || value === undefined) return "";
+  const s = String(value).trim();
+  if (!s) return "";
+  if (s.toLowerCase() === "null") return "";
+  if (s.toLowerCase() === "undefined") return "";
+  return s;
 }
 
 function YearPicker({ years, value, onChange }) {
@@ -157,10 +167,11 @@ function MonthTile({ month, weeks, onOpen }) {
                     key={w.id}
                     className="inline-flex items-center justify-center rounded-full bg-black/35 px-1.5 py-1"
                   >
-                    <img
-                      src={w.avatar || "/favicon.ico"}
-                      alt={w.name}
-                      className="h-7 w-7 rounded-full object-cover ring-1 ring-white/15"
+                    <Avatar
+                      src={cleanAvatarSrc(w.avatar)}
+                      name={w.name}
+                      seed={w.personId || w.discord || w.x || w.name || w.id}
+                      size={28}
                     />
                   </div>
                 ))}
@@ -217,10 +228,7 @@ export default function WbcMonthOverlay({ open, onClose }) {
         setEntries(list);
       })
       .catch((err) => {
-        if (!cancelled) {
-          console.error("Failed to load WBC entries!", err);
-          setLoadError(err.message || "Failed to load Weekly Best Content data!");
-        }
+        if (!cancelled) setLoadError(err.message || "Failed to load Weekly Best Content data!");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -243,11 +251,8 @@ export default function WbcMonthOverlay({ open, onClose }) {
 
   useEffect(() => {
     if (!years.length) return;
-    if (selectedYear == null) {
-      setSelectedYear(years[0]);
-    } else if (!years.includes(selectedYear)) {
-      setSelectedYear(years[0]);
-    }
+    if (selectedYear == null) setSelectedYear(years[0]);
+    else if (!years.includes(selectedYear)) setSelectedYear(years[0]);
   }, [years, selectedYear]);
 
   const entriesForYear = useMemo(() => {
@@ -328,12 +333,8 @@ export default function WbcMonthOverlay({ open, onClose }) {
             </div>
           </div>
 
-          {loading && (
-            <p className="text-xs text-zinc-400 mb-2">Loading winners...</p>
-          )}
-          {loadError && (
-            <p className="text-xs text-red-400 mb-2">{loadError}</p>
-          )}
+          {loading && <p className="text-xs text-zinc-400 mb-2">Loading winners...</p>}
+          {loadError && <p className="text-xs text-red-400 mb-2">{loadError}</p>}
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 pt-2">
             <motion.button
@@ -353,12 +354,8 @@ export default function WbcMonthOverlay({ open, onClose }) {
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-white/5 mix-blend-soft-light pointer-events-none" />
               <div className="relative z-10">
                 <div className="text-sm text-white/85">Weekly Best Content</div>
-                <div className="mt-0.5 text-2xl font-bold text-white">
-                  View all winners
-                </div>
-                <div className="mt-4 text-sm text-white/85">
-                  • Browse every month and week
-                </div>
+                <div className="mt-0.5 text-2xl font-bold text-white">View all winners</div>
+                <div className="mt-4 text-sm text-white/85">• Browse every month and week</div>
               </div>
             </motion.button>
 
@@ -373,9 +370,7 @@ export default function WbcMonthOverlay({ open, onClose }) {
           </div>
 
           {years.length > 0 && !loading && months.length === 0 && (
-            <p className="mt-4 text-sm text-zinc-400">
-              No WBC data found for {selectedYear}.
-            </p>
+            <p className="mt-4 text-sm text-zinc-400">No WBC data found for {selectedYear}.</p>
           )}
         </motion.div>
 
@@ -388,10 +383,8 @@ export default function WbcMonthOverlay({ open, onClose }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <div
-                className="absolute inset-0 bg-black/70"
-                onClick={handleWeekClose}
-              />
+              <div className="absolute inset-0 bg-black/70" onClick={handleWeekClose} />
+
               <motion.div
                 initial={{ y: 40, opacity: 0, scale: 0.98 }}
                 animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -401,8 +394,7 @@ export default function WbcMonthOverlay({ open, onClose }) {
               >
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold">
-                    Select winner : {selectedMonth}{" "}
-                    {selectedYear ? `(${selectedYear})` : ""}
+                    Select winner : {selectedMonth} {selectedYear ? `(${selectedYear})` : ""}
                   </h2>
                   <button
                     onClick={handleWeekClose}
@@ -421,22 +413,19 @@ export default function WbcMonthOverlay({ open, onClose }) {
                       className="glass-tile-watery p-3 text-left"
                     >
                       <div className="flex items-center gap-3">
-                        <img
-                          src={entry.avatar || "/favicon.ico"}
-                          alt={entry.name}
-                          className="h-10 w-10 rounded-full object-cover ring-1 ring-white/20"
+                        <Avatar
+                          src={cleanAvatarSrc(entry.avatar)}
+                          name={entry.name}
+                          seed={entry.personId || entry.discord || entry.x || entry.name || entry.id}
+                          size={40}
                         />
                         <div className="min-w-0">
                           <div className="text-sm font-semibold text-white truncate">
                             {entry.weekLabel || entry.dateRange || "Week"}
                           </div>
-                          <div className="text-xs text-zinc-300 truncate">
-                            {entry.name}
-                          </div>
+                          <div className="text-xs text-zinc-300 truncate">{entry.name}</div>
                           {entry.dateRange && (
-                            <div className="text-[11px] text-zinc-400">
-                              {entry.dateRange}
-                            </div>
+                            <div className="text-[11px] text-zinc-400">{entry.dateRange}</div>
                           )}
                         </div>
                       </div>
