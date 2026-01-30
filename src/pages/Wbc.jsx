@@ -1,6 +1,7 @@
 // Wbc.jsx
 import { useMemo, useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
+import Avatar from "../components/ui/Avatar.jsx"; // adjust if your path is different
 
 const MONTH_ORDER = [
   "January",
@@ -27,6 +28,20 @@ function parseMonthString(label) {
   const monthPart = label.split(",")[0].trim().split(" ")[0];
   const idx = MONTH_ORDER.indexOf(monthPart);
   return idx === -1 ? -1 : idx;
+}
+
+function safeYear(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function cleanAvatarSrc(value) {
+  if (value === null || value === undefined) return "";
+  const s = String(value).trim();
+  if (!s) return "";
+  if (s.toLowerCase() === "null") return "";
+  if (s.toLowerCase() === "undefined") return "";
+  return s;
 }
 
 function DiscordIcon() {
@@ -77,7 +92,7 @@ export default function Wbc() {
   const [showWeekDialog, setShowWeekDialog] = useState(false);
 
   const yearParamRaw = searchParams.get("year");
-  const yearParam = yearParamRaw ? Number(yearParamRaw) : null;
+  const yearParam = yearParamRaw ? safeYear(yearParamRaw) : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -91,7 +106,7 @@ export default function Wbc() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        const mapped = data.map((row) => ({
+        const mapped = (Array.isArray(data) ? data : []).map((row) => ({
           id: row.id,
           personId: row.person_id || null,
           name: row.name || "",
@@ -99,7 +114,7 @@ export default function Wbc() {
           discord: row.discord || "",
           x: row.x_handle || row.x || "",
           month: row.month || "",
-          year: row.year ? Number(row.year) : null,
+          year: safeYear(row.year),
           weekLabel: row.week_label || "",
           dateRange: row.date_range || "",
           link: row.link || "",
@@ -160,7 +175,7 @@ export default function Wbc() {
     const monthParam = searchParams.get("month");
     const weekParam = searchParams.get("week") || searchParams.get("range") || "";
     const urlYearRaw = searchParams.get("year");
-    const urlYear = urlYearRaw ? Number(urlYearRaw) : null;
+    const urlYear = urlYearRaw ? safeYear(urlYearRaw) : null;
 
     let match = null;
 
@@ -289,7 +304,9 @@ export default function Wbc() {
         )}
 
         {loading && (
-          <p className="mt-4 text-sm text-zinc-400">Loading Weekly Best Content...</p>
+          <p className="mt-4 text-sm text-zinc-400">
+            Loading Weekly Best Content...
+          </p>
         )}
         {error && <p className="mt-4 text-sm text-red-400">Error: {error}</p>}
 
@@ -332,10 +349,11 @@ export default function Wbc() {
                                 onClick={(ev) => ev.stopPropagation()}
                                 title="Open winner profile"
                               >
-                                <img
-                                  src={e.avatar || "/favicon.ico"}
-                                  alt={e.name}
-                                  className="h-6 w-6 rounded-full object-cover"
+                                <Avatar
+                                  src={cleanAvatarSrc(e.avatar)}
+                                  name={e.name}
+                                  seed={e.personId || e.discord || e.x || e.name || e.id}
+                                  size={24}
                                 />
                                 <span className="text-xs text-zinc-100">{e.name}</span>
                               </Link>
@@ -372,11 +390,19 @@ export default function Wbc() {
 
             <div className="glass-tile-watery relative p-5 sm:p-6">
               <div className="flex items-center gap-4">
-                <img
-                  src={activeEntry.avatar || "/favicon.ico"}
-                  alt={activeEntry.name}
-                  className="h-14 w-14 rounded-full object-cover ring-1 ring-white/20"
+                <Avatar
+                  src={cleanAvatarSrc(activeEntry.avatar)}
+                  name={activeEntry.name}
+                  seed={
+                    activeEntry.personId ||
+                    activeEntry.discord ||
+                    activeEntry.x ||
+                    activeEntry.name ||
+                    activeEntry.id
+                  }
+                  size={56}
                 />
+
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <div className="text-lg font-semibold text-white truncate">
@@ -503,10 +529,11 @@ export default function Wbc() {
                   className="glass-tile-watery p-3 text-left"
                 >
                   <div className="flex items-center gap-3">
-                    <img
-                      src={entry.avatar || "/favicon.ico"}
-                      alt={entry.name}
-                      className="h-10 w-10 rounded-full object-cover ring-1 ring-white/20"
+                    <Avatar
+                      src={cleanAvatarSrc(entry.avatar)}
+                      name={entry.name}
+                      seed={entry.personId || entry.discord || entry.x || entry.name || entry.id}
+                      size={40}
                     />
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-white truncate">
