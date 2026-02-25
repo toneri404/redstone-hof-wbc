@@ -5,7 +5,7 @@ export default function Footer() {
         
         {/* Left side */}
         <div className="text-center md:text-left">
-          <p>© 2025 RedStone Community Hub</p>
+          <p>© 2026 RedStone Community Hub</p>
           <p className="mt-1 text-xs text-redstone-100/60">
             Built by the{" "}
             <span className="text-red-400 font-medium">
