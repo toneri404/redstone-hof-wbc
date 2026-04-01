@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import hofBg from "../assets/hof-bg.png";
 import homeBg from "../assets/home.png";
+
 import wbcBg from "../assets/wbc.png";
 import redstoneLogoPng from "../assets/redstone-logo.png";
 import WbcMonthOverlay from "../components/ui/WbcMonthOverlay.jsx";
